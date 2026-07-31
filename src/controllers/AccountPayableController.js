@@ -9,7 +9,6 @@ class AccountPayableController {
 
       const accounts = await AccountPayableModel.findPendingByStore(tiendaId);
 
-      // Calcular diferencial cambiario dinámico
       const formatted = accounts.map(acc => {
         const diff = DifferentialExchangeService.calculateGainLoss({
           montoUsd: parseFloat(acc.monto_usd),
@@ -18,7 +17,13 @@ class AccountPayableController {
         });
 
         return {
-          ...acc,
+          id: acc.id,
+          proveedor: acc.proveedor,
+          producto: acc.producto,
+          montoUsd: parseFloat(acc.monto_usd),
+          tasaOrigen: parseFloat(acc.tasa_origen || 36),
+          fechaVencimiento: acc.fecha_vencimiento,
+          estado: acc.estado,
           diferencialCambiario: diff
         };
       });

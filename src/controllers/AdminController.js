@@ -1,48 +1,48 @@
 const db = require('../../config/db');
 
+const PLAN_BY_AMOUNT = { 15: 1, 18: 2, 22: 3 };
+
 class AdminController {
 
   static async getStores(req, res, next) {
     try {
       const [stores] = await db.query(`
-        SELECT 
+        SELECT
           t.id,
           t.nombre,
           t.rif,
           t.telefono,
           u.nombre AS dueno,
           u.email,
-          s.plan,
-          s.precio_mensual AS planMonto,
+          p.nombre AS plan,
+          p.precio_mensual AS planMonto,
           s.ciclo,
           s.estado,
           s.proximo_pago AS proximoPago,
           COUNT(DISTINCT u2.id) AS usuariosActuales,
-          CASE s.plan
-            WHEN 'ECONOMICO' THEN 1
-            WHEN 'ESTANDAR' THEN 3
-            WHEN 'PRO' THEN 999
-            ELSE 1
-          END AS usuariosPermitidos
+          p.max_usuarios AS usuariosPermitidos
         FROM tiendas t
-        LEFT JOIN usuarios u ON u.tienda_id = t.id AND u.rol = 'ADMIN'
         LEFT JOIN suscripciones s ON s.tienda_id = t.id
-        LEFT JOIN usuarios u2 ON u2.tienda_id = t.id
-        GROUP BY t.id, s.id
+        LEFT JOIN planes p ON p.id = s.plan_id
+        LEFT JOIN usuarios u ON u.tienda_id = t.id AND u.rol_id = 2
+        LEFT JOIN usuarios u2 ON u2.tienda_id = t.id AND u2.deleted_at IS NULL AND u2.estado = 'ACTIVO'
+        WHERE t.deleted_at IS NULL
+        GROUP BY t.id, s.id, p.id, u.id, u.nombre, u.email
         ORDER BY t.id ASC
       `);
 
       const [mrrRow] = await db.query(`
-        SELECT COALESCE(SUM(precio_mensual), 0) AS mrr
-        FROM suscripciones
-        WHERE estado = 'ACTIVATED'
+        SELECT COALESCE(SUM(p.precio_mensual), 0) AS mrr
+        FROM suscripciones s
+        JOIN planes p ON p.id = s.plan_id
+        WHERE s.estado = 'ACTIVA'
       `);
 
       const [statsRow] = await db.query(`
         SELECT
-          COUNT(CASE WHEN estado = 'ACTIVATED' THEN 1 END) AS totalActivas,
-          COUNT(CASE WHEN estado = 'SUSPENDED' THEN 1 END) AS totalSuspendidas,
-          COUNT(CASE WHEN estado = 'TRIAL' THEN 1 END) AS totalTrial
+          COUNT(CASE WHEN estado = 'ACTIVA' THEN 1 END) AS totalActivas,
+          COUNT(CASE WHEN estado = 'SUSPENDIDA' THEN 1 END) AS totalSuspendidas,
+          COUNT(CASE WHEN estado = 'PRUEBA' THEN 1 END) AS totalTrial
         FROM suscripciones
       `);
 
@@ -62,19 +62,19 @@ class AdminController {
   static async updateStorePlan(req, res, next) {
     try {
       const { storeId, plan, monto } = req.body;
-      if (!storeId || !plan) {
-        return res.status(400).json({ success: false, error: 'storeId y plan son requeridos' });
+      if (!storeId || !monto) {
+        return res.status(400).json({ success: false, error: 'storeId y monto son requeridos' });
       }
 
-      const planEnum = plan.toUpperCase().replace('Ó', 'O').replace('Á', 'A');
+      const planId = PLAN_BY_AMOUNT[parseInt(monto, 10)] || 2;
       await db.query(
-        `UPDATE suscripciones SET plan = ?, precio_mensual = ? WHERE tienda_id = ?`,
-        [planEnum, monto, storeId]
+        `UPDATE suscripciones SET plan_id = ? WHERE tienda_id = ?`,
+        [planId, storeId]
       );
 
       res.json({
         success: true,
-        message: `Plan del comercio #${storeId} actualizado a ${plan} ($${monto}/mes)`
+        message: `Plan del comercio #${storeId} actualizado a ${plan || monto} ($${monto}/mes)`
       });
     } catch (err) {
       next(err);
@@ -88,7 +88,7 @@ class AdminController {
         return res.status(400).json({ success: false, error: 'storeId y estado son requeridos' });
       }
 
-      const estadoEnum = estado === 'Activa' ? 'ACTIVATED' : 'SUSPENDED';
+      const estadoEnum = estado === 'Activa' ? 'ACTIVA' : 'SUSPENDIDA';
       await db.query(
         `UPDATE suscripciones SET estado = ? WHERE tienda_id = ?`,
         [estadoEnum, storeId]
@@ -106,21 +106,22 @@ class AdminController {
   static async getPendingPayments(req, res, next) {
     try {
       const [payments] = await db.query(`
-        SELECT 
+        SELECT
           rp.id,
           t.nombre AS tiendaNombre,
           u.nombre AS dueno,
           u.email,
-          rp.plan AS planReportado,
+          pl.nombre AS planReportado,
           rp.metodo_pago AS metodo,
           rp.referencia,
-          rp.monto,
+          rp.monto_usd AS monto,
           rp.banco_emisor AS bancoEmisor,
           rp.estado,
           rp.created_at AS fecha
         FROM reportes_pago rp
         JOIN tiendas t ON t.id = rp.tienda_id
-        LEFT JOIN usuarios u ON u.tienda_id = rp.tienda_id AND u.rol = 'ADMIN'
+        JOIN planes pl ON pl.id = rp.plan_id
+        LEFT JOIN usuarios u ON u.tienda_id = rp.tienda_id AND u.rol_id = 2
         WHERE rp.estado = 'PENDIENTE'
         ORDER BY rp.created_at DESC
       `);
@@ -141,18 +142,14 @@ class AdminController {
       }
 
       const pago = rows[0];
-
-      // Marcar pago como aprobado
       await db.query(`UPDATE reportes_pago SET estado = 'APROBADO' WHERE id = ?`, [pagoId]);
 
-      // Calcular nuevo proximo_pago (30 días desde hoy)
       const proximoPago = new Date();
       proximoPago.setDate(proximoPago.getDate() + 30);
 
-      // Activar suscripción de la tienda
       await db.query(
-        `UPDATE suscripciones SET estado = 'ACTIVATED', proximo_pago = ? WHERE tienda_id = ?`,
-        [proximoPago.toISOString().split('T')[0], pago.tienda_id]
+        `UPDATE suscripciones SET estado = 'ACTIVA', plan_id = ?, proximo_pago = ? WHERE tienda_id = ?`,
+        [pago.plan_id, proximoPago.toISOString().split('T')[0], pago.tienda_id]
       );
 
       res.json({
@@ -174,13 +171,21 @@ class AdminController {
     }
   }
 
-  // Productos: inventario real desde BD
   static async getProducts(req, res, next) {
     try {
       const tiendaId = req.user?.tiendaId || 1;
       const [products] = await db.query(
-        `SELECT id, codigo_ref AS codigo, nombre, categoria, precio_usd AS precioUsd, stock, stock_minimo AS minStock
-         FROM productos WHERE tienda_id = ? ORDER BY nombre ASC`,
+        `SELECT p.id,
+                p.codigo_ref AS codigo,
+                p.nombre,
+                COALESCE(cp.nombre, 'General') AS categoria,
+                p.precio_usd AS precioUsd,
+                p.stock,
+                p.stock_minimo AS minStock
+         FROM productos p
+         LEFT JOIN categorias_producto cp ON cp.id = p.categoria_id
+         WHERE p.tienda_id = ?
+         ORDER BY p.nombre ASC`,
         [tiendaId]
       );
       res.json({ success: true, data: products });
@@ -194,10 +199,25 @@ class AdminController {
       const tiendaId = req.user?.tiendaId || 1;
       const { codigo, nombre, categoria, precioUsd, stock, minStock } = req.body;
 
+      const normalizedCategoria = (categoria || 'General').trim();
+      const [catRows] = await db.query(
+        `SELECT id FROM categorias_producto WHERE tienda_id = ? AND nombre = ? LIMIT 1`,
+        [tiendaId, normalizedCategoria]
+      );
+
+      let categoriaId = catRows[0]?.id || null;
+      if (!categoriaId) {
+        const [insertCat] = await db.query(
+          `INSERT INTO categorias_producto (tienda_id, nombre) VALUES (?, ?)`,
+          [tiendaId, normalizedCategoria]
+        );
+        categoriaId = insertCat.insertId;
+      }
+
       const [result] = await db.query(
-        `INSERT INTO productos (tienda_id, codigo_ref, nombre, categoria, precio_usd, stock, stock_minimo)
+        `INSERT INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [tiendaId, codigo, nombre, categoria || 'General', precioUsd, stock || 0, minStock || 5]
+        [tiendaId, categoriaId, codigo, nombre, precioUsd, stock || 0, minStock || 5]
       );
       res.status(201).json({ success: true, id: result.insertId, message: 'Producto creado' });
     } catch (err) {
@@ -205,28 +225,12 @@ class AdminController {
     }
   }
 
-  // Cuentas por pagar: desde BD
-  static async getAccounts(req, res, next) {
-    try {
-      const tiendaId = req.user?.tiendaId || 1;
-      const [accounts] = await db.query(
-        `SELECT id, proveedor, producto, monto_usd AS montoUsd, estado, fecha_vencimiento AS fechaVencimiento
-         FROM cuentas_pagar WHERE tienda_id = ? AND estado = 'Pendiente' ORDER BY fecha_vencimiento ASC`,
-        [tiendaId]
-      );
-      res.json({ success: true, data: accounts });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  // Dashboard stats desde BD
   static async getDashboardStats(req, res, next) {
     try {
       const tiendaId = req.user?.tiendaId || 1;
 
       const [[ventas]] = await db.query(
-        `SELECT 
+        `SELECT
           COALESCE(SUM(monto_total_usd), 0) AS totalUsd,
           COUNT(*) AS totalVentas
          FROM ventas v
@@ -236,7 +240,7 @@ class AdminController {
       );
 
       const [[inventario]] = await db.query(
-        `SELECT 
+        `SELECT
           COUNT(CASE WHEN stock > 0 AND stock <= stock_minimo THEN 1 END) AS lowStock,
           COUNT(CASE WHEN stock = 0 THEN 1 END) AS emptyStock
          FROM productos WHERE tienda_id = ?`,
@@ -245,7 +249,7 @@ class AdminController {
 
       const [[cuentas]] = await db.query(
         `SELECT COALESCE(SUM(monto_usd), 0) AS totalPendiente
-         FROM cuentas_pagar WHERE tienda_id = ? AND estado = 'Pendiente'`,
+         FROM cuentas_pagar WHERE tienda_id = ? AND estado IN ('PENDIENTE', 'VENCIDA', 'PARCIAL')`,
         [tiendaId]
       );
 

@@ -1,4 +1,5 @@
 const SaleModel = require('../models/SaleModel');
+const CashRegisterModel = require('../models/CashRegisterModel');
 const CasheaCalculatorService = require('../services/CasheaCalculatorService');
 
 class SaleController {
@@ -6,8 +7,26 @@ class SaleController {
     try {
       const { clienteNombre, clienteRif, montoUsd, tasaBcv = 36.50, metodoPago, items = [] } = req.body;
 
+      const tiendaId = req.user?.tiendaId || 1;
+      const activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
+
+      let cajaId = req.body.cajaId || activeCaja?.id || null;
+      if (!cajaId) {
+        cajaId = await CashRegisterModel.open({
+          tiendaId,
+          usuarioId: req.user.id,
+          montoUsd: 0,
+          montoBs: 0,
+          desgloseUsd: {},
+          desgloseBs: {},
+          zelle: 0,
+          pagoMovil: 0,
+          pos: 0,
+          tasaBcv
+        });
+      }
+
       const montoBs = montoUsd * tasaBcv;
-      const cajaId = req.body.cajaId || 1;
 
       const ventaId = await SaleModel.createVenta({
         cajaId,

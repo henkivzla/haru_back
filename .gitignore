@@ -1,6 +1,21 @@
+# Dependencies
 node_modules/
+
+# Environment (never commit secrets)
 .env
-.env.local
+.env.*
+!.env.example
+
+# Logs
 *.log
+npm-debug.log*
+
+# Build / coverage
 dist/
 coverage/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.sw?

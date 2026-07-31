@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS tiendas (
   activo      TINYINT(1)   NOT NULL DEFAULT 1,
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at  TIMESTAMP    NULL DEFAULT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Comercios cliente del sistema SaaS';
 
@@ -72,16 +73,32 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email         VARCHAR(150)  NOT NULL UNIQUE,
   password_hash VARCHAR(255)  NOT NULL,
   activo        TINYINT(1)    NOT NULL DEFAULT 1,
+  estado        ENUM('ACTIVO','INACTIVO','BLOQUEADO') NOT NULL DEFAULT 'ACTIVO',
   ultimo_login  TIMESTAMP     NULL,
   created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at    TIMESTAMP     NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id) REFERENCES tiendas(id)  ON DELETE SET NULL,
   FOREIGN KEY (rol_id)    REFERENCES roles(id)     ON DELETE RESTRICT,
   INDEX idx_tienda (tienda_id),
   INDEX idx_email  (email),
-  INDEX idx_rol    (rol_id)
+  INDEX idx_rol    (rol_id),
+  INDEX idx_estado (estado, deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Usuarios del sistema con rol referenciado';
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  usuario_id   INT UNSIGNED NOT NULL,
+  token_hash   VARCHAR(64)  NOT NULL,
+  expires_at   TIMESTAMP    NOT NULL,
+  used_at      TIMESTAMP    NULL,
+  created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_token_hash (token_hash),
+  INDEX idx_usuario_expires (usuario_id, expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Tokens temporales para restablecer contraseña';
 
 -- ============================================================================
 -- 5. SUSCRIPCIONES
@@ -96,6 +113,7 @@ CREATE TABLE IF NOT EXISTS suscripciones (
   proximo_pago  DATE      NOT NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at    TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id) REFERENCES tiendas(id) ON DELETE CASCADE,
   FOREIGN KEY (plan_id)   REFERENCES planes(id)  ON DELETE RESTRICT,
@@ -320,24 +338,34 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- SEED DATA — datos iniciales del sistema
 -- ============================================================================
 
--- Tienda demo
+-- Tiendas demo
 INSERT IGNORE INTO tiendas (id, nombre, rif, direccion, telefono) VALUES
-  (1, 'Comercio Demo lilit', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas, VE', '+58 412 1234567');
+  (1, 'Comercio Demo lilit', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas, VE', '+58 412 1234567'),
+  (2, 'Inversiones lilit Vzla', 'J-87654321-0', 'Centro Comercial, Valencia, VE', '+58 424 7654321');
+
+-- Usuarios demo (password: lilit2026)
+INSERT IGNORE INTO usuarios (id, tienda_id, rol_id, nombre, email, password_hash) VALUES
+  (1, NULL, 1, 'Diego Aponte (Dueño)', 'dueno@lilit.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC'),
+  (2, 2, 2, 'Carlos Mendoza (Gerente)', 'gerente@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC'),
+  (3, 2, 3, 'María Gómez (Cajera)', 'cajero@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC'),
+  (4, 1, 2, 'Diego Aponte', 'diego@negocio.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC');
 
 -- Tasa BCV inicial
 INSERT IGNORE INTO tasas_bcv (tasa, fuente) VALUES
   (746.6300, 'bcv.org.ve');
 
--- Suscripcion demo (tienda 1 en plan Pro)
+-- Suscripciones demo
 INSERT IGNORE INTO suscripciones (id, tienda_id, plan_id, ciclo, estado, fecha_inicio, proximo_pago) VALUES
-  (1, 1, 3, 'MENSUAL', 'ACTIVA', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY));
+  (1, 1, 3, 'MENSUAL', 'ACTIVA', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY)),
+  (2, 2, 2, 'MENSUAL', 'ACTIVA', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY));
 
 -- Categorias demo
 INSERT IGNORE INTO categorias_producto (id, tienda_id, nombre, color_hex) VALUES
   (1, 1, 'Licores',    '#8B5CF6'),
   (2, 1, 'Viveres',    '#10B981'),
   (3, 1, 'Calzado',    '#F59E0B'),
-  (4, 1, 'Tecnologia', '#06B6D4');
+  (4, 1, 'Tecnologia', '#06B6D4'),
+  (5, 2, 'Viveres',    '#10B981');
 
 -- Proveedor demo
 INSERT IGNORE INTO proveedores (id, tienda_id, nombre, rif, telefono) VALUES
@@ -346,4 +374,10 @@ INSERT IGNORE INTO proveedores (id, tienda_id, nombre, rif, telefono) VALUES
 -- Productos demo
 INSERT IGNORE INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo) VALUES
   (1, 2, 'VIV-001', 'Harina P.A.N. Bulto 20kg', 19.00, 18, 5),
-  (1, 1, 'LIC-001', 'Ron Santa Teresa Gran Reserva 0.75L', 14.50, 0, 5);
+  (1, 1, 'LIC-001', 'Ron Santa Teresa Gran Reserva 0.75L', 14.50, 0, 5),
+  (2, 5, 'VIV-001', 'Harina P.A.N. Bulto 20kg', 19.00, 10, 5);
+
+-- Cuentas por pagar demo (tienda 1)
+INSERT IGNORE INTO cuentas_pagar (id, tienda_id, proveedor_id, descripcion, monto_usd, tasa_origen, fecha_vencimiento, estado) VALUES
+  (1, 1, 1, 'Factura licores marzo', 450.00, 746.6300, DATE_ADD(CURDATE(), INTERVAL 15 DAY), 'PENDIENTE'),
+  (2, 1, 1, 'Mercancía viveres', 280.50, 720.0000, DATE_SUB(CURDATE(), INTERVAL 3 DAY), 'VENCIDA');

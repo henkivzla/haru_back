@@ -1,47 +1,50 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
+const UserModel = require('../models/UserModel');
+const { resolveFeatures } = require('../config/planFeatures');
 
-// Usuarios demo en memoria (mientras no hay BD conectada)
-const DEMO_USERS = [
-  {
-    id: 1,
-    tienda_id: 1,
-    nombre: 'Diego Aponte (Dueño)',
-    email: 'dueno@lilit.ve',
-    password: 'lilit2026',
-    rol: 'SUPERADMIN',
-    tienda_nombre: 'lilit Admin'
-  },
-  {
-    id: 2,
-    tienda_id: 2,
-    nombre: 'Carlos Mendoza (Gerente)',
-    email: 'gerente@tienda.ve',
-    password: 'lilit2026',
-    rol: 'ADMIN',
-    tienda_nombre: 'Comercio Demo lilit'
-  },
-  {
-    id: 3,
-    tienda_id: 2,
-    nombre: 'María Gómez (Cajera)',
-    email: 'cajero@tienda.ve',
-    password: 'lilit2026',
-    rol: 'CAJERO',
-    tienda_nombre: 'Comercio Demo lilit'
-  },
-  // Usuario original por compatibilidad
-  {
-    id: 4,
-    tienda_id: 1,
-    nombre: 'Diego Aponte',
-    email: 'diego@negocio.ve',
-    password: 'lilit2026',
-    rol: 'ADMIN',
-    tienda_nombre: 'Inversiones lilit Vzla'
+function buildAuthPayload(user, subscription) {
+  const role = user.rol;
+  const isSuperAdmin = role === 'SUPERADMIN';
+  const subscriptionActive = !subscription || ['ACTIVA', 'PRUEBA'].includes(subscription.estado);
+  const planSlug = isSuperAdmin ? 'pro' : (subscription?.planSlug || 'economico');
+
+  let features = isSuperAdmin
+    ? resolveFeatures('pro')
+    : resolveFeatures(planSlug);
+
+  if (!isSuperAdmin && subscription && !subscriptionActive) {
+    features = ['planes'];
   }
-];
+
+  return {
+    tokenPayload: {
+      id: user.id,
+      tiendaId: user.tienda_id,
+      email: user.email,
+      role,
+      planSlug,
+      features,
+      subscriptionActive
+    },
+    userResponse: {
+      id: user.id,
+      nombre: user.nombre,
+      email: user.email,
+      role,
+      tiendaNombre: user.tienda_nombre,
+      planSlug,
+      planNombre: subscription?.planNombre || (isSuperAdmin ? 'Plan Pro' : 'Plan Económico'),
+      planMonto: subscription?.planMonto || (planSlug === 'pro' ? 22 : planSlug === 'estandar' ? 18 : 15),
+      subscriptionEstado: subscription?.estado || (isSuperAdmin ? 'ACTIVA' : 'PRUEBA'),
+      proximoPago: subscription?.proximoPago || null,
+      maxUsuarios: subscription?.maxUsuarios || (planSlug === 'pro' ? 999 : planSlug === 'estandar' ? 3 : 1),
+      features,
+      subscriptionActive
+    }
+  };
+}
 
 class AuthController {
   async login(req, res, next) {
@@ -52,64 +55,38 @@ class AuthController {
         return res.status(400).json({ success: false, error: 'Correo y contraseña son requeridos' });
       }
 
-      // Buscar usuario en la lista demo (sin BD activa)
-      const demoUser = DEMO_USERS.find(u => u.email === email);
-      if (demoUser && password === demoUser.password) {
-        const token = jwt.sign(
-          { id: demoUser.id, tiendaId: demoUser.tienda_id, email: demoUser.email, role: demoUser.rol },
-          env.JWT_SECRET,
-          { expiresIn: env.JWT_EXPIRES_IN || '8h' }
-        );
-
-        return res.json({
-          success: true,
-          message: 'Inicio de sesión exitoso',
-          token,
-          user: {
-            id: demoUser.id,
-            nombre: demoUser.nombre,
-            email: demoUser.email,
-            role: demoUser.rol,
-            tiendaNombre: demoUser.tienda_nombre
-          }
-        });
-      }
-
-      // Si hay BD disponible, intentar consulta real
-      try {
-        const UserModel = require('../models/UserModel');
-        const user = await UserModel.findByEmail(email);
-
-        if (!user) {
-          return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
-        }
-
-        const isValidPassword = await bcrypt.compare(password, user.password_hash);
-        if (!isValidPassword) {
-          return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
-        }
-
-        const token = jwt.sign(
-          { id: user.id, tiendaId: user.tienda_id, email: user.email, role: user.rol },
-          env.JWT_SECRET,
-          { expiresIn: env.JWT_EXPIRES_IN || '8h' }
-        );
-
-        return res.json({
-          success: true,
-          token,
-          user: {
-            id: user.id,
-            nombre: user.nombre,
-            email: user.email,
-            role: user.rol,
-            tiendaNombre: user.tienda_nombre
-          }
-        });
-      } catch (dbErr) {
-        // BD no disponible y credenciales no coinciden con demo
+      const user = await UserModel.findByEmailIncludingInactive(email.trim().toLowerCase());
+      if (!user || user.deleted_at) {
         return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
       }
+
+      if (user.estado === 'BLOQUEADO') {
+        return res.status(403).json({ success: false, error: 'Tu cuenta está bloqueada. Contacta al administrador.' });
+      }
+      if (user.estado === 'INACTIVO') {
+        return res.status(403).json({ success: false, error: 'Tu cuenta está inactiva. Contacta al administrador.' });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      if (!isValidPassword) {
+        return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
+      }
+
+      await UserModel.updateLastLogin(user.id);
+
+      const subscription = await UserModel.findSubscriptionByTiendaId(user.tienda_id);
+      const { tokenPayload, userResponse } = buildAuthPayload(user, subscription);
+
+      const token = jwt.sign(tokenPayload, env.JWT_SECRET, {
+        expiresIn: env.JWT_EXPIRES_IN || '8h'
+      });
+
+      return res.json({
+        success: true,
+        message: 'Inicio de sesión exitoso',
+        token,
+        user: userResponse
+      });
     } catch (error) {
       next(error);
     }
@@ -117,27 +94,15 @@ class AuthController {
 
   async getProfile(req, res, next) {
     try {
-      const demoUser = DEMO_USERS.find(u => u.id === req.user.id);
-      if (demoUser) {
-        return res.json({
-          success: true,
-          user: {
-            id: demoUser.id,
-            nombre: demoUser.nombre,
-            email: demoUser.email,
-            role: demoUser.rol,
-            tiendaNombre: demoUser.tienda_nombre
-          }
-        });
-      }
-
-      try {
-        const UserModel = require('../models/UserModel');
-        const user = await UserModel.findById(req.user.id);
-        return res.json({ success: true, user });
-      } catch (dbErr) {
+      const user = await UserModel.findById(req.user.id);
+      if (!user) {
         return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
       }
+
+      const subscription = await UserModel.findSubscriptionByTiendaId(user.tienda_id);
+      const { userResponse } = buildAuthPayload(user, subscription);
+
+      return res.json({ success: true, user: userResponse });
     } catch (error) {
       next(error);
     }

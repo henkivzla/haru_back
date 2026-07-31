@@ -28,10 +28,43 @@ const checkRole = (allowedRoles = []) => {
     const userRole = (req.user.role || 'ADMIN').toUpperCase();
     const formattedAllowed = allowedRoles.map(r => r.toUpperCase());
 
-    if (!formattedAllowed.includes(userRole) && !formattedAllowed.includes('SUPERADMIN') && userRole !== 'SUPERADMIN') {
-      return res.status(403).json({ 
-        success: false, 
-        error: `Acceso denegado: Tu rol (${userRole}) no tiene permisos para esta acción` 
+    if (userRole === 'SUPERADMIN' || formattedAllowed.includes(userRole)) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      error: `Acceso denegado: Tu rol (${userRole}) no tiene permisos para esta acción`
+    });
+  };
+};
+
+const checkFeature = (feature) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Usuario no autenticado' });
+    }
+
+    const userRole = (req.user.role || '').toUpperCase();
+    if (userRole === 'SUPERADMIN') {
+      return next();
+    }
+
+    if (req.user.subscriptionActive === false) {
+      return res.status(403).json({
+        success: false,
+        error: 'Tu suscripción está suspendida. Renueva tu plan para continuar.',
+        upgradeUrl: '/planes'
+      });
+    }
+
+    const features = req.user.features || [];
+    if (!features.includes(feature)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Tu plan actual no incluye esta funcionalidad',
+        requiredFeature: feature,
+        upgradeUrl: '/planes'
       });
     }
 
@@ -41,5 +74,6 @@ const checkRole = (allowedRoles = []) => {
 
 module.exports = {
   verifyToken,
-  checkRole
+  checkRole,
+  checkFeature
 };
