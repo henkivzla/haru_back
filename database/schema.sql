@@ -1,5 +1,5 @@
 -- ==========================================================================
--- FINA POS VENEZUELA - MYSQL DATABASE SCHEMA FOR CPANEL
+-- LILIT POS VENEZUELA - MYSQL DATABASE SCHEMA FOR CPANEL
 -- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS tiendas (
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 CREATE TABLE IF NOT EXISTS tasas_bcv (
   id INT AUTO_INCREMENT PRIMARY KEY,
   tasa DECIMAL(10, 4) NOT NULL,
-  fuente VARCHAR(50) DEFAULT 'BCV',
+  fuente VARCHAR(50) DEFAULT 'bcv.org.ve',
   fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -99,6 +99,6 @@ CREATE TABLE IF NOT EXISTS cuentas_por_pagar (
 
 -- DATOS DE PRUEBA INICIALES
 INSERT INTO tiendas (id, nombre, rif, direccion, telefono) VALUES
-(1, 'Inversiones Fina Vzla', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas', '+58 412 1234567');
+(1, 'Inversiones lilit Vzla', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas', '+58 412 1234567');
 
-INSERT INTO tasas_bcv (tasa, fuente) VALUES (36.5000, 'BCV Oficial');
+INSERT INTO tasas_bcv (tasa, fuente) VALUES (746.6300, 'bcv.org.ve');
