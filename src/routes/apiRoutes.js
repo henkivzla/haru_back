@@ -24,13 +24,25 @@ router.post('/caja/cerrar', verifyToken, (req, res, next) => CashRegisterControl
 // VENTAS
 router.post('/ventas/crear', verifyToken, (req, res, next) => SaleController.processSale(req, res, next));
 
-// CUENTAS POR PAGAR (ADMIN & GERENTE)
+// CUENTAS POR PAGAR
 router.get('/cuentas/pendientes', verifyToken, checkRole(['ADMIN', 'SUPERADMIN']), (req, res, next) => AccountPayableController.getAccounts(req, res, next));
 router.put('/cuentas/:id/pagar', verifyToken, checkRole(['ADMIN', 'SUPERADMIN']), (req, res, next) => AccountPayableController.payAccount(req, res, next));
 
-// SUPER-ADMIN MANAGEMENT (SOLO ACCESIBLE POR DUEÑO / SUPERADMIN)
+// INVENTARIO / PRODUCTOS
+router.get('/productos', verifyToken, (req, res, next) => AdminController.getProducts(req, res, next));
+router.post('/productos', verifyToken, checkRole(['ADMIN', 'SUPERADMIN']), (req, res, next) => AdminController.createProduct(req, res, next));
+
+// DASHBOARD STATS
+router.get('/dashboard/stats', verifyToken, (req, res, next) => AdminController.getDashboardStats(req, res, next));
+
+// SUPER-ADMIN: gestión de tiendas suscritas
 router.get('/admin/stores', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AdminController.getStores(req, res, next));
 router.post('/admin/stores/plan', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AdminController.updateStorePlan(req, res, next));
 router.post('/admin/stores/status', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AdminController.toggleStoreStatus(req, res, next));
+
+// SUPER-ADMIN: pagos de suscripción reportados por clientes
+router.get('/admin/pagos/pendientes', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AdminController.getPendingPayments(req, res, next));
+router.post('/admin/pagos/:pagoId/aprobar', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AdminController.approvePayment(req, res, next));
+router.post('/admin/pagos/:pagoId/rechazar', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AdminController.rejectPayment(req, res, next));
 
 module.exports = router;
