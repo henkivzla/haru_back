@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS cajas (
   usuario_id INT NOT NULL,
   monto_apertura_usd DECIMAL(12, 2) DEFAULT 0.00,
   monto_apertura_bs DECIMAL(12, 2) DEFAULT 0.00,
+  desglose_usd JSON NULL,
+  desglose_bs JSON NULL,
   monto_zelle_usd DECIMAL(12, 2) DEFAULT 0.00,
   monto_pago_movil_bs DECIMAL(12, 2) DEFAULT 0.00,
   monto_pos_bs DECIMAL(12, 2) DEFAULT 0.00,

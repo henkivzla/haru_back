@@ -16,7 +16,7 @@ class CashRegisterController {
 
   async openCaja(req, res, next) {
     try {
-      const { montoUsd = 0, montoBs = 0, zelle = 0, pagoMovil = 0, pos = 0, tasaBcv = 36.50 } = req.body;
+      const { montoUsd = 0, montoBs = 0, desgloseUsd = {}, desgloseBs = {}, zelle = 0, pagoMovil = 0, pos = 0, tasaBcv = 746.63 } = req.body;
       const tiendaId = req.user.tiendaId || 1;
 
       const cajaId = await CashRegisterModel.open({
@@ -24,6 +24,8 @@ class CashRegisterController {
         usuarioId: req.user.id,
         montoUsd,
         montoBs,
+        desgloseUsd,
+        desgloseBs,
         zelle,
         pagoMovil,
         pos,
@@ -32,7 +34,7 @@ class CashRegisterController {
 
       return res.status(201).json({
         success: true,
-        message: 'Caja aperturada exitosamente',
+        message: 'Caja aperturada exitosamente con desglose de billetes',
         cajaId
       });
     } catch (error) {
