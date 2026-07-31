@@ -1,5 +1,5 @@
 -- ==========================================================================
--- LILIT POS VENEZUELA - MYSQL DATABASE SCHEMA FOR CPANEL
+-- LILIT POS VENEZUELA - MYSQL DATABASE SCHEMA & RBAC ROLES
 -- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS tiendas (
@@ -17,7 +17,19 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre VARCHAR(100) NOT NULL,
   email VARCHAR(150) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  rol ENUM('ADMIN', 'CAJERO', 'CONTADOR') DEFAULT 'ADMIN',
+  rol ENUM('SUPERADMIN', 'ADMIN', 'CAJERO') DEFAULT 'ADMIN',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (tienda_id) REFERENCES tiendas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS suscripciones (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tienda_id INT NOT NULL,
+  plan ENUM('ECONOMICO', 'ESTANDAR', 'PRO') NOT NULL DEFAULT 'ECONOMICO',
+  precio_mensual DECIMAL(10, 2) NOT NULL DEFAULT 15.00,
+  ciclo ENUM('MENSUAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL') NOT NULL DEFAULT 'TRIMESTRAL',
+  estado ENUM('ACTIVATED', 'SUSPENDED', 'TRIAL') NOT NULL DEFAULT 'ACTIVATED',
+  proximo_pago DATE NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tienda_id) REFERENCES tiendas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -69,38 +81,13 @@ CREATE TABLE IF NOT EXISTS ventas (
   monto_total_usd DECIMAL(12, 2) NOT NULL,
   monto_total_bs DECIMAL(12, 2) NOT NULL,
   tasa_bcv_aplicada DECIMAL(10, 4) NOT NULL,
-  metodo_pago ENUM('Efectivo USD', 'Efectivo Bs', 'Pago Movil', 'Zelle', 'Punto de Venta', 'Cashea') NOT NULL,
-  es_nota_entrega BOOLEAN DEFAULT TRUE,
+  metodo_pago ENUM('Efectivo USD', 'Efectivo Bs', 'Pago Movil', 'Zelle', 'Punto de Venta') NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (caja_id) REFERENCES cajas(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS detalles_venta (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  venta_id INT NOT NULL,
-  producto_id INT NOT NULL,
-  cantidad INT NOT NULL,
-  precio_unitario_usd DECIMAL(10, 2) NOT NULL,
-  subtotal_usd DECIMAL(12, 2) NOT NULL,
-  FOREIGN KEY (venta_id) REFERENCES ventas(id) ON DELETE CASCADE,
-  FOREIGN KEY (producto_id) REFERENCES productos(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS cuentas_por_pagar (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  tienda_id INT NOT NULL,
-  proveedor VARCHAR(150) NOT NULL,
-  concepto VARCHAR(255) NOT NULL,
-  monto_usd DECIMAL(12, 2) NOT NULL,
-  tasa_origen DECIMAL(10, 4) NOT NULL,
-  estado ENUM('PENDIENTE', 'VENCIDA', 'PAGADA') DEFAULT 'PENDIENTE',
-  fecha_vencimiento DATE NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tienda_id) REFERENCES tiendas(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- DATOS DE PRUEBA INICIALES
 INSERT INTO tiendas (id, nombre, rif, direccion, telefono) VALUES
-(1, 'Inversiones lilit Vzla', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas', '+58 412 1234567');
+(1, 'Comercio Demo lilit Vzla', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas', '+58 412 1234567');
 
 INSERT INTO tasas_bcv (tasa, fuente) VALUES (746.6300, 'bcv.org.ve');
