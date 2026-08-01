@@ -1,9 +1,15 @@
 ﻿-- ============================================================================
--- LILIT POS VENEZUELA — SCHEMA NORMALIZADO v2.0
+-- LILIT POS VENEZUELA — SCHEMA NORMALIZADO v2.1
 -- Autor: @henkivzla
 -- Descripcion: Base de datos relacional normalizada en 3FN para sistema SaaS
 --              de punto de venta multisucursal.
+-- Incluye: password_reset_tokens, estado/deleted_at usuarios, soft delete global
+-- IMPORTANTE: Este script BORRA la base de datos existente y la recrea desde cero.
 -- ============================================================================
+
+DROP DATABASE IF EXISTS lilit_db;
+CREATE DATABASE lilit_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE lilit_db;
 
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO';
@@ -138,6 +144,7 @@ CREATE TABLE IF NOT EXISTS reportes_pago (
   nota_revision   TEXT          NULL,
   created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at      TIMESTAMP     NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id)      REFERENCES tiendas(id)       ON DELETE CASCADE,
   FOREIGN KEY (suscripcion_id) REFERENCES suscripciones(id) ON DELETE SET NULL,
@@ -193,6 +200,7 @@ CREATE TABLE IF NOT EXISTS categorias_producto (
   tienda_id   INT UNSIGNED NOT NULL,
   nombre      VARCHAR(80)  NOT NULL,
   color_hex   VARCHAR(7)   NULL DEFAULT '#64748B',
+  deleted_at  TIMESTAMP    NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id) REFERENCES tiendas(id) ON DELETE CASCADE,
   UNIQUE KEY uq_tienda_cat (tienda_id, nombre)
@@ -214,6 +222,7 @@ CREATE TABLE IF NOT EXISTS productos (
   activo        TINYINT(1)    NOT NULL DEFAULT 1,
   created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at    TIMESTAMP     NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id)    REFERENCES tiendas(id)             ON DELETE CASCADE,
   FOREIGN KEY (categoria_id) REFERENCES categorias_producto(id) ON DELETE SET NULL,
@@ -236,6 +245,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   direccion   TEXT         NULL,
   activo      TINYINT(1)   NOT NULL DEFAULT 1,
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at  TIMESTAMP    NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id) REFERENCES tiendas(id) ON DELETE CASCADE,
   INDEX idx_rif    (rif_cedula),
@@ -303,6 +313,7 @@ CREATE TABLE IF NOT EXISTS proveedores (
   contacto    VARCHAR(100) NULL,
   activo      TINYINT(1)   NOT NULL DEFAULT 1,
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at  TIMESTAMP    NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id) REFERENCES tiendas(id) ON DELETE CASCADE,
   INDEX idx_tienda (tienda_id)
@@ -325,6 +336,7 @@ CREATE TABLE IF NOT EXISTS cuentas_pagar (
   notas             TEXT          NULL,
   created_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at        TIMESTAMP     NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id)    REFERENCES tiendas(id)    ON DELETE CASCADE,
   FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE SET NULL,
@@ -344,11 +356,11 @@ INSERT IGNORE INTO tiendas (id, nombre, rif, direccion, telefono) VALUES
   (2, 'Inversiones lilit Vzla', 'J-87654321-0', 'Centro Comercial, Valencia, VE', '+58 424 7654321');
 
 -- Usuarios demo (password: lilit2026)
-INSERT IGNORE INTO usuarios (id, tienda_id, rol_id, nombre, email, password_hash) VALUES
-  (1, NULL, 1, 'Diego Aponte (Dueño)', 'dueno@lilit.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC'),
-  (2, 2, 2, 'Carlos Mendoza (Gerente)', 'gerente@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC'),
-  (3, 2, 3, 'María Gómez (Cajera)', 'cajero@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC'),
-  (4, 1, 2, 'Diego Aponte', 'diego@negocio.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC');
+INSERT IGNORE INTO usuarios (id, tienda_id, rol_id, nombre, email, password_hash, estado) VALUES
+  (1, NULL, 1, 'Diego Aponte (Dueño)', 'dueno@lilit.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
+  (2, 2, 2, 'Carlos Mendoza (Gerente)', 'gerente@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
+  (3, 2, 3, 'María Gómez (Cajera)', 'cajero@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
+  (4, 1, 2, 'Diego Aponte', 'diego@negocio.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO');
 
 -- Tasa BCV inicial
 INSERT IGNORE INTO tasas_bcv (tasa, fuente) VALUES

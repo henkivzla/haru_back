@@ -2,49 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
 const UserModel = require('../models/UserModel');
-const { resolveFeatures } = require('../config/planFeatures');
-
-function buildAuthPayload(user, subscription) {
-  const role = user.rol;
-  const isSuperAdmin = role === 'SUPERADMIN';
-  const subscriptionActive = !subscription || ['ACTIVA', 'PRUEBA'].includes(subscription.estado);
-  const planSlug = isSuperAdmin ? 'pro' : (subscription?.planSlug || 'economico');
-
-  let features = isSuperAdmin
-    ? resolveFeatures('pro')
-    : resolveFeatures(planSlug);
-
-  if (!isSuperAdmin && subscription && !subscriptionActive) {
-    features = ['planes'];
-  }
-
-  return {
-    tokenPayload: {
-      id: user.id,
-      tiendaId: user.tienda_id,
-      email: user.email,
-      role,
-      planSlug,
-      features,
-      subscriptionActive
-    },
-    userResponse: {
-      id: user.id,
-      nombre: user.nombre,
-      email: user.email,
-      role,
-      tiendaNombre: user.tienda_nombre,
-      planSlug,
-      planNombre: subscription?.planNombre || (isSuperAdmin ? 'Plan Pro' : 'Plan Económico'),
-      planMonto: subscription?.planMonto || (planSlug === 'pro' ? 22 : planSlug === 'estandar' ? 18 : 15),
-      subscriptionEstado: subscription?.estado || (isSuperAdmin ? 'ACTIVA' : 'PRUEBA'),
-      proximoPago: subscription?.proximoPago || null,
-      maxUsuarios: subscription?.maxUsuarios || (planSlug === 'pro' ? 999 : planSlug === 'estandar' ? 3 : 1),
-      features,
-      subscriptionActive
-    }
-  };
-}
+const { buildAuthPayload } = require('./authPayload');
 
 class AuthController {
   async login(req, res, next) {

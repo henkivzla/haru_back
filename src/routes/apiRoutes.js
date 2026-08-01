@@ -10,9 +10,11 @@ const AccountPayableController = require('../controllers/AccountPayableControlle
 const AdminController = require('../controllers/AdminController');
 const SubscriptionController = require('../controllers/SubscriptionController');
 const PasswordResetController = require('../controllers/PasswordResetController');
+const RegisterController = require('../controllers/RegisterController');
 const UserController = require('../controllers/UserController');
 
 // AUTH ROUTES
+router.post('/auth/register', (req, res, next) => RegisterController.register(req, res, next));
 router.post('/auth/login', (req, res, next) => AuthController.login(req, res, next));
 router.get('/auth/me', verifyToken, (req, res, next) => AuthController.getProfile(req, res, next));
 router.post('/auth/forgot-password', (req, res, next) => PasswordResetController.forgotPassword(req, res, next));
