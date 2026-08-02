@@ -19,6 +19,7 @@ const SucursalController = require('../controllers/SucursalController');
 const ReportController = require('../controllers/ReportController');
 const TeamController = require('../controllers/TeamController');
 const AppearanceController = require('../controllers/AppearanceController');
+const { uploadProductImageMiddleware } = require('../middlewares/productImageUpload');
 const { reportPaymentLimiter } = require('../middlewares/rateLimit');
 
 const adminOnly = checkRole(['ADMIN', 'SUPERADMIN']);
@@ -63,6 +64,8 @@ router.delete('/gastos/:id', verifyToken, checkSubscriptionActive, adminOnly, re
 // RESUMEN Y ESTADÍSTICAS
 router.get('/resumen/financiero', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('resumen'), (req, res, next) => ReportController.getResumen(req, res, next));
 router.get('/estadisticas/ventas', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('estadisticas'), (req, res, next) => ReportController.getEstadisticas(req, res, next));
+router.get('/export/ventas', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('estadisticas'), (req, res, next) => ReportController.exportVentas(req, res, next));
+router.get('/export/ventas-detalle', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('estadisticas'), (req, res, next) => ReportController.exportVentaItems(req, res, next));
 
 // MULTI-SUCURSAL (Plan Pro)
 router.get('/sucursales', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('multi_sucursal'), (req, res, next) => SucursalController.list(req, res, next));
@@ -85,6 +88,8 @@ router.get('/productos/:id', verifyToken, checkSubscriptionActive, checkFeature(
 router.get('/productos', verifyToken, checkSubscriptionActive, checkFeature('inventario'), (req, res, next) => AdminController.getProducts(req, res, next));
 router.post('/productos/carga-masiva', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('inventario'), (req, res, next) => AdminController.bulkCreateProducts(req, res, next));
 router.post('/productos', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('inventario'), (req, res, next) => AdminController.createProduct(req, res, next));
+router.post('/productos/:id/imagen', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('inventario'), uploadProductImageMiddleware, (req, res, next) => AdminController.uploadProductImage(req, res, next));
+router.delete('/productos/:id/imagen', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('inventario'), (req, res, next) => AdminController.deleteProductImage(req, res, next));
 router.patch('/productos/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('inventario'), (req, res, next) => AdminController.updateProduct(req, res, next));
 router.delete('/productos/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('inventario'), (req, res, next) => AdminController.deleteProduct(req, res, next));
 

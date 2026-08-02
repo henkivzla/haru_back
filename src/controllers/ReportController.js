@@ -119,6 +119,62 @@ class ReportController {
       next(err);
     }
   }
+
+  static async exportVentas(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId;
+      const [rows] = await db.query(
+        `SELECT
+           v.id,
+           v.created_at AS fecha,
+           v.metodo_pago AS metodoPago,
+           v.monto_total_usd AS montoUsd,
+           v.monto_total_bs AS montoBs,
+           v.tasa_bcv_aplicada AS tasaBcv,
+           TRIM(CONCAT(COALESCE(cl.nombre, ''), ' ', COALESCE(cl.apellido, ''))) AS cliente,
+           u.nombre AS cajero
+         FROM ventas v
+         JOIN cajas c ON c.id = v.caja_id
+         JOIN usuarios u ON u.id = c.usuario_id
+         LEFT JOIN clientes cl ON cl.id = v.cliente_id
+         WHERE c.tienda_id = ? AND v.anulada = 0
+         ORDER BY v.created_at DESC
+         LIMIT 5000`,
+        [tiendaId]
+      );
+
+      res.json({ success: true, data: rows });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async exportVentaItems(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId;
+      const [rows] = await db.query(
+        `SELECT
+           v.id AS ventaId,
+           v.created_at AS fecha,
+           iv.nombre_producto AS producto,
+           iv.cantidad,
+           iv.precio_unitario_usd AS precioUsd,
+           iv.subtotal_usd AS subtotalUsd,
+           v.metodo_pago AS metodoPago
+         FROM items_venta iv
+         JOIN ventas v ON v.id = iv.venta_id
+         JOIN cajas c ON c.id = v.caja_id
+         WHERE c.tienda_id = ? AND v.anulada = 0
+         ORDER BY v.created_at DESC, iv.id ASC
+         LIMIT 10000`,
+        [tiendaId]
+      );
+
+      res.json({ success: true, data: rows });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = ReportController;

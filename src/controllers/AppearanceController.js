@@ -64,6 +64,10 @@ class AppearanceController {
       );
 
       const user = await UserModel.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+      }
+
       const subscription = await refreshSubscriptionForStore(db, tiendaId);
       const { user: userResponse } = issueAuthToken(user, subscription);
 
@@ -126,6 +130,10 @@ class AppearanceController {
       );
 
       const user = await UserModel.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+      }
+
       const { user: userResponse } = issueAuthToken(user, null);
 
       return res.json({

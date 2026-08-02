@@ -1,8 +1,18 @@
 const db = require('../../config/db');
 const { normalizeCodigoRef } = require('../utils/productCode');
 const { insertProduct } = require('../services/productService');
+const { saveProductImage, deleteStoredImage, cleanupTempFile } = require('../services/productImageService');
+const { resolveMediaUrl } = require('../../config/uploads');
 
 const PLAN_BY_AMOUNT = { 15: 1, 18: 2, 22: 3 };
+
+function mapProductRow(row) {
+  if (!row) return row;
+  return {
+    ...row,
+    imagenUrl: resolveMediaUrl(row.imagenUrl),
+  };
+}
 
 const PRODUCT_SELECT = `
   p.id,
@@ -13,6 +23,7 @@ const PRODUCT_SELECT = `
   p.stock,
   p.stock_minimo AS minStock,
   p.descripcion,
+  p.imagen_url AS imagenUrl,
   p.activo,
   p.created_at AS createdAt,
   p.updated_at AS updatedAt,
@@ -222,7 +233,7 @@ class AdminController {
          ORDER BY p.created_at DESC, p.id DESC`,
         [tiendaId]
       );
-      res.json({ success: true, data: products });
+      res.json({ success: true, data: products.map(mapProductRow) });
     } catch (err) {
       next(err);
     }
@@ -248,7 +259,7 @@ class AdminController {
         return res.status(404).json({ success: false, error: 'Producto no encontrado' });
       }
 
-      res.json({ success: true, data: rows[0] });
+      res.json({ success: true, data: mapProductRow(rows[0]) });
     } catch (err) {
       next(err);
     }
@@ -420,12 +431,114 @@ class AdminController {
     }
   }
 
+  static async uploadProductImage(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId || 1;
+      const id = parseInt(req.params.id, 10);
+
+      if (!id) {
+        cleanupTempFile(req.file);
+        return res.status(400).json({ success: false, error: 'ID inválido' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'Selecciona una imagen JPG, PNG o WebP (máx. 2 MB)' });
+      }
+
+      const [existing] = await db.query(
+        `SELECT id, imagen_url AS imagenUrl FROM productos
+         WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL LIMIT 1`,
+        [id, tiendaId]
+      );
+
+      if (!existing.length) {
+        cleanupTempFile(req.file);
+        return res.status(404).json({ success: false, error: 'Producto no encontrado' });
+      }
+
+      const { storedPath, imagenUrl } = saveProductImage({
+        tiendaId,
+        productId: id,
+        file: req.file,
+      });
+
+      if (existing[0].imagenUrl) {
+        deleteStoredImage(existing[0].imagenUrl);
+      }
+
+      await db.query(
+        `UPDATE productos SET imagen_url = ? WHERE id = ? AND tienda_id = ?`,
+        [storedPath, id, tiendaId]
+      );
+
+      res.json({
+        success: true,
+        imagenUrl,
+        message: 'Imagen del producto actualizada',
+      });
+    } catch (err) {
+      cleanupTempFile(req.file);
+      if (err.message?.includes('Formato') || err.message?.includes('2 MB') || err.message?.includes('Selecciona')) {
+        return res.status(400).json({ success: false, error: err.message });
+      }
+      next(err);
+    }
+  }
+
+  static async deleteProductImage(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId || 1;
+      const id = parseInt(req.params.id, 10);
+
+      if (!id) {
+        return res.status(400).json({ success: false, error: 'ID inválido' });
+      }
+
+      const [existing] = await db.query(
+        `SELECT imagen_url AS imagenUrl FROM productos
+         WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL LIMIT 1`,
+        [id, tiendaId]
+      );
+
+      if (!existing.length) {
+        return res.status(404).json({ success: false, error: 'Producto no encontrado' });
+      }
+
+      if (existing[0].imagenUrl) {
+        deleteStoredImage(existing[0].imagenUrl);
+      }
+
+      await db.query(
+        `UPDATE productos SET imagen_url = NULL WHERE id = ? AND tienda_id = ?`,
+        [id, tiendaId]
+      );
+
+      res.json({ success: true, message: 'Imagen eliminada' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async deleteProduct(req, res, next) {
     try {
       const tiendaId = req.user?.tiendaId || 1;
       const id = parseInt(req.params.id, 10);
       if (!id) {
         return res.status(400).json({ success: false, error: 'ID inválido' });
+      }
+
+      const [existing] = await db.query(
+        `SELECT id, imagen_url AS imagenUrl FROM productos
+         WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL LIMIT 1`,
+        [id, tiendaId]
+      );
+
+      if (!existing.length) {
+        return res.status(404).json({ success: false, error: 'Producto no encontrado' });
+      }
+
+      if (existing[0].imagenUrl) {
+        deleteStoredImage(existing[0].imagenUrl);
       }
 
       const [result] = await db.query(

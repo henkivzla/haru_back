@@ -4,6 +4,10 @@ const { resolveFeatures } = require('../config/planFeatures');
 const { resolveAppearance } = require('../constants/accentPalette');
 
 function buildAuthPayload(user, subscription) {
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+
   const role = user.rol;
   const isSuperAdmin = role === 'SUPERADMIN';
   const subscriptionActive = !subscription || ['ACTIVA', 'PRUEBA'].includes(subscription.estado);

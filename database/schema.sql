@@ -221,6 +221,7 @@ CREATE TABLE IF NOT EXISTS productos (
   codigo_ref    VARCHAR(50)   NOT NULL,
   nombre        VARCHAR(150)  NOT NULL,
   descripcion   TEXT          NULL,
+  imagen_url    VARCHAR(500)  NULL,
   precio_usd    DECIMAL(10,2) NOT NULL,
   stock         INT           NOT NULL DEFAULT 0,
   stock_minimo  INT           NOT NULL DEFAULT 5,
