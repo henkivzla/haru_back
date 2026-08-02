@@ -1,7 +1,8 @@
-﻿-- ============================================================================
--- LILIT POS VENEZUELA — SCHEMA NORMALIZADO v2.2
+-- ============================================================================
+-- LILIT POS VENEZUELA — SCHEMA NORMALIZADO v2.4
 -- Autor: @henkivzla
--- Incluye: Binance en reportes_pago, RIF opcional, gastos, sucursales, soft delete
+-- Incluye: clientes.apellido, Binance, gastos, sucursales, soft delete, productos.creado_por_id
+-- Usa SOLO este archivo para crear o resetear la BD (no migraciones sueltas).
 -- IMPORTANTE: Este script BORRA la base de datos existente y la recrea desde cero.
 -- Importar en phpMyAdmin: pestaña Importar → database/schema.sql
 -- ⚠️  Perderás usuarios registrados manualmente. Solo demo queda en seed.
@@ -220,15 +221,18 @@ CREATE TABLE IF NOT EXISTS productos (
   stock         INT           NOT NULL DEFAULT 0,
   stock_minimo  INT           NOT NULL DEFAULT 5,
   activo        TINYINT(1)    NOT NULL DEFAULT 1,
+  creado_por_id INT UNSIGNED  NULL,
   created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted_at    TIMESTAMP     NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (tienda_id)    REFERENCES tiendas(id)             ON DELETE CASCADE,
   FOREIGN KEY (categoria_id) REFERENCES categorias_producto(id) ON DELETE SET NULL,
+  FOREIGN KEY (creado_por_id) REFERENCES usuarios(id)            ON DELETE SET NULL,
   UNIQUE KEY uq_tienda_codigo (tienda_id, codigo_ref),
   INDEX idx_tienda_activo (tienda_id, activo),
-  INDEX idx_stock         (tienda_id, stock)
+  INDEX idx_stock         (tienda_id, stock),
+  INDEX idx_tienda_created (tienda_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Inventario de productos por tienda';
 
 -- ============================================================================
@@ -239,6 +243,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   tienda_id   INT UNSIGNED NOT NULL,
   nombre      VARCHAR(150) NOT NULL,
+  apellido    VARCHAR(150) NULL,
   rif_cedula  VARCHAR(30)  NULL,
   telefono    VARCHAR(30)  NULL,
   email       VARCHAR(150) NULL,
@@ -419,10 +424,10 @@ INSERT IGNORE INTO proveedores (id, tienda_id, nombre, rif, telefono) VALUES
   (1, 1, 'Distribuidora Nacional C.A.', 'J-98765432-1', '+58 212 5551234');
 
 -- Productos demo
-INSERT IGNORE INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo) VALUES
-  (1, 2, 'VIV-001', 'Harina P.A.N. Bulto 20kg', 19.00, 18, 5),
-  (1, 1, 'LIC-001', 'Ron Santa Teresa Gran Reserva 0.75L', 14.50, 0, 5),
-  (2, 5, 'VIV-001', 'Harina P.A.N. Bulto 20kg', 19.00, 10, 5);
+INSERT IGNORE INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo, creado_por_id) VALUES
+  (1, 2, 'COD-VIV-001', 'Harina P.A.N. Bulto 20kg', 19.00, 18, 5, 4),
+  (1, 1, 'COD-LIC-001', 'Ron Santa Teresa Gran Reserva 0.75L', 14.50, 0, 5, 4),
+  (2, 5, 'COD-VIV-001', 'Harina P.A.N. Bulto 20kg', 19.00, 10, 5, 2);
 
 -- Cuentas por pagar demo (tienda 1)
 INSERT IGNORE INTO cuentas_pagar (id, tienda_id, proveedor_id, descripcion, monto_usd, tasa_origen, fecha_vencimiento, estado) VALUES

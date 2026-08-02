@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { verifyToken, checkRole, checkFeature, checkSubscriptionActive } = require('../middlewares/authMiddleware');
+const requireAdminReauth = require('../middlewares/requireAdminReauth');
 const AuthController = require('../controllers/AuthController');
 const CashRegisterController = require('../controllers/CashRegisterController');
 const SaleController = require('../controllers/SaleController');
@@ -26,6 +27,7 @@ const storeAdmin = checkRole(['ADMIN']);
 router.post('/auth/register', (req, res, next) => RegisterController.register(req, res, next));
 router.post('/auth/login', (req, res, next) => AuthController.login(req, res, next));
 router.get('/auth/me', verifyToken, (req, res, next) => AuthController.getProfile(req, res, next));
+router.post('/auth/verify-admin-action', verifyToken, adminOnly, (req, res, next) => AuthController.verifyAdminAction(req, res, next));
 router.post('/auth/forgot-password', (req, res, next) => PasswordResetController.forgotPassword(req, res, next));
 router.post('/auth/reset-password', (req, res, next) => PasswordResetController.resetPassword(req, res, next));
 
@@ -42,17 +44,17 @@ router.post('/ventas/crear', verifyToken, checkSubscriptionActive, checkFeature(
 
 // CUENTAS POR PAGAR
 router.get('/cuentas/pendientes', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('cuentas'), (req, res, next) => AccountPayableController.getAccounts(req, res, next));
-router.put('/cuentas/:id/pagar', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('cuentas'), (req, res, next) => AccountPayableController.payAccount(req, res, next));
+router.put('/cuentas/:id/pagar', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('cuentas'), (req, res, next) => AccountPayableController.payAccount(req, res, next));
 
 // CLIENTES (Plan Estándar+)
 router.get('/clientes', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('clientes'), (req, res, next) => ClienteController.list(req, res, next));
 router.post('/clientes', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('clientes'), (req, res, next) => ClienteController.create(req, res, next));
-router.delete('/clientes/:id', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('clientes'), (req, res, next) => ClienteController.remove(req, res, next));
+router.delete('/clientes/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('clientes'), (req, res, next) => ClienteController.remove(req, res, next));
 
 // GASTOS ADMINISTRATIVOS (Plan Estándar+)
 router.get('/gastos', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('gastos'), (req, res, next) => GastoController.list(req, res, next));
 router.post('/gastos', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('gastos'), (req, res, next) => GastoController.create(req, res, next));
-router.delete('/gastos/:id', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('gastos'), (req, res, next) => GastoController.remove(req, res, next));
+router.delete('/gastos/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('gastos'), (req, res, next) => GastoController.remove(req, res, next));
 
 // RESUMEN Y ESTADÍSTICAS
 router.get('/resumen/financiero', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('resumen'), (req, res, next) => ReportController.getResumen(req, res, next));
@@ -61,8 +63,8 @@ router.get('/estadisticas/ventas', verifyToken, checkSubscriptionActive, adminOn
 // MULTI-SUCURSAL (Plan Pro)
 router.get('/sucursales', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('multi_sucursal'), (req, res, next) => SucursalController.list(req, res, next));
 router.post('/sucursales', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('multi_sucursal'), (req, res, next) => SucursalController.create(req, res, next));
-router.patch('/sucursales/:id', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('multi_sucursal'), (req, res, next) => SucursalController.update(req, res, next));
-router.delete('/sucursales/:id', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('multi_sucursal'), (req, res, next) => SucursalController.remove(req, res, next));
+router.patch('/sucursales/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('multi_sucursal'), (req, res, next) => SucursalController.update(req, res, next));
+router.delete('/sucursales/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('multi_sucursal'), (req, res, next) => SucursalController.remove(req, res, next));
 
 // EQUIPO DE LA TIENDA (límite por plan)
 router.get('/tienda/equipo', verifyToken, storeAdmin, (req, res, next) => TeamController.listTeam(req, res, next));
@@ -74,11 +76,15 @@ router.get('/suscripciones/mis-reportes', verifyToken, storeAdmin, (req, res, ne
 router.post('/suscripciones/reportar-pago', verifyToken, storeAdmin, reportPaymentLimiter, (req, res, next) => SubscriptionController.reportPayment(req, res, next));
 
 // INVENTARIO / PRODUCTOS
+router.get('/productos/categorias', verifyToken, checkSubscriptionActive, checkFeature('inventario'), (req, res, next) => AdminController.getCategories(req, res, next));
+router.get('/productos/:id', verifyToken, checkSubscriptionActive, checkFeature('inventario'), (req, res, next) => AdminController.getProductById(req, res, next));
 router.get('/productos', verifyToken, checkSubscriptionActive, checkFeature('inventario'), (req, res, next) => AdminController.getProducts(req, res, next));
 router.post('/productos', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('inventario'), (req, res, next) => AdminController.createProduct(req, res, next));
+router.patch('/productos/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('inventario'), (req, res, next) => AdminController.updateProduct(req, res, next));
+router.delete('/productos/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('inventario'), (req, res, next) => AdminController.deleteProduct(req, res, next));
 
 // DASHBOARD STATS
-router.get('/dashboard/stats', verifyToken, checkSubscriptionActive, checkFeature('dashboard'), (req, res, next) => AdminController.getDashboardStats(req, res, next));
+router.get('/dashboard/stats', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('dashboard'), (req, res, next) => AdminController.getDashboardStats(req, res, next));
 
 // SUPER-ADMIN: gestión de tiendas suscritas
 router.get('/admin/stores', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AdminController.getStores(req, res, next));

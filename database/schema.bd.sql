@@ -1,7 +1,7 @@
-﻿-- ============================================================================
--- LILIT POS VENEZUELA — SCHEMA COMPLETO v2.2 (schema.bd.sql)
+-- ============================================================================
+-- LILIT POS VENEZUELA — SCHEMA COMPLETO v2.3 (schema.bd.sql)
 -- Importar este archivo en phpMyAdmin → Importar
--- ⚠️  BORRA lilit_db y la recrea. Usuarios registrados se pierden (quedan demo).
+-- ⚠️  BORRA lilit_db y la recrea. Usa SOLO este archivo (no migraciones sueltas).
 -- ============================================================================
 
 DROP DATABASE IF EXISTS lilit_db;
@@ -236,6 +236,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   tienda_id   INT UNSIGNED NOT NULL,
   nombre      VARCHAR(150) NOT NULL,
+  apellido    VARCHAR(150) NULL,
   rif_cedula  VARCHAR(30)  NULL,
   telefono    VARCHAR(30)  NULL,
   email       VARCHAR(150) NULL,

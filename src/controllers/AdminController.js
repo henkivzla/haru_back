@@ -1,6 +1,29 @@
 const db = require('../../config/db');
+const { normalizeCodigoRef } = require('../utils/productCode');
 
 const PLAN_BY_AMOUNT = { 15: 1, 18: 2, 22: 3 };
+
+const PRODUCT_SELECT = `
+  p.id,
+  p.codigo_ref AS codigo,
+  p.nombre,
+  COALESCE(cp.nombre, 'General') AS categoria,
+  p.precio_usd AS precioUsd,
+  p.stock,
+  p.stock_minimo AS minStock,
+  p.descripcion,
+  p.activo,
+  p.created_at AS createdAt,
+  p.updated_at AS updatedAt,
+  u.nombre AS creadoPor,
+  u.email AS creadoPorEmail
+`;
+
+const PRODUCT_FROM = `
+  FROM productos p
+  LEFT JOIN categorias_producto cp ON cp.id = p.categoria_id AND cp.deleted_at IS NULL
+  LEFT JOIN usuarios u ON u.id = p.creado_por_id AND u.deleted_at IS NULL
+`;
 
 class AdminController {
 
@@ -172,24 +195,59 @@ class AdminController {
     }
   }
 
+  static async getCategories(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId || 1;
+      const [rows] = await db.query(
+        `SELECT id, nombre
+         FROM categorias_producto
+         WHERE tienda_id = ? AND deleted_at IS NULL
+         ORDER BY nombre ASC`,
+        [tiendaId]
+      );
+      res.json({ success: true, data: rows });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async getProducts(req, res, next) {
     try {
       const tiendaId = req.user?.tiendaId || 1;
       const [products] = await db.query(
-        `SELECT p.id,
-                p.codigo_ref AS codigo,
-                p.nombre,
-                COALESCE(cp.nombre, 'General') AS categoria,
-                p.precio_usd AS precioUsd,
-                p.stock,
-                p.stock_minimo AS minStock
-         FROM productos p
-         LEFT JOIN categorias_producto cp ON cp.id = p.categoria_id
-         WHERE p.tienda_id = ?
-         ORDER BY p.nombre ASC`,
+        `SELECT ${PRODUCT_SELECT}
+         ${PRODUCT_FROM}
+         WHERE p.tienda_id = ? AND p.deleted_at IS NULL
+         ORDER BY p.created_at DESC, p.id DESC`,
         [tiendaId]
       );
       res.json({ success: true, data: products });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getProductById(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId || 1;
+      const id = parseInt(req.params.id, 10);
+      if (!id) {
+        return res.status(400).json({ success: false, error: 'ID inválido' });
+      }
+
+      const [rows] = await db.query(
+        `SELECT ${PRODUCT_SELECT}
+         ${PRODUCT_FROM}
+         WHERE p.id = ? AND p.tienda_id = ? AND p.deleted_at IS NULL
+         LIMIT 1`,
+        [id, tiendaId]
+      );
+
+      if (!rows.length) {
+        return res.status(404).json({ success: false, error: 'Producto no encontrado' });
+      }
+
+      res.json({ success: true, data: rows[0] });
     } catch (err) {
       next(err);
     }
@@ -200,9 +258,28 @@ class AdminController {
       const tiendaId = req.user?.tiendaId || 1;
       const { codigo, nombre, categoria, precioUsd, stock, minStock } = req.body;
 
+      if (!nombre?.trim()) {
+        return res.status(400).json({ success: false, error: 'El nombre del producto es requerido' });
+      }
+
+      const codigoRef = normalizeCodigoRef(codigo);
       const normalizedCategoria = (categoria || 'General').trim();
+      const creadoPorId = req.user?.id || null;
+
+      const [existing] = await db.query(
+        `SELECT id FROM productos
+         WHERE tienda_id = ? AND codigo_ref = ? AND deleted_at IS NULL
+         LIMIT 1`,
+        [tiendaId, codigoRef]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ success: false, error: 'Ya existe un producto con ese código' });
+      }
+
       const [catRows] = await db.query(
-        `SELECT id FROM categorias_producto WHERE tienda_id = ? AND nombre = ? LIMIT 1`,
+        `SELECT id FROM categorias_producto
+         WHERE tienda_id = ? AND LOWER(nombre) = LOWER(?) AND deleted_at IS NULL
+         LIMIT 1`,
         [tiendaId, normalizedCategoria]
       );
 
@@ -216,11 +293,106 @@ class AdminController {
       }
 
       const [result] = await db.query(
-        `INSERT INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [tiendaId, categoriaId, codigo, nombre, precioUsd, stock || 0, minStock || 5]
+        `INSERT INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo, creado_por_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [tiendaId, categoriaId, codigoRef, nombre.trim(), precioUsd, stock || 0, minStock || 5, creadoPorId]
       );
       res.status(201).json({ success: true, id: result.insertId, message: 'Producto creado' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async updateProduct(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId || 1;
+      const id = parseInt(req.params.id, 10);
+      const { nombre, codigo, categoria, precioUsd, stock, minStock } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ success: false, error: 'ID inválido' });
+      }
+      if (!nombre?.trim()) {
+        return res.status(400).json({ success: false, error: 'El nombre del producto es requerido' });
+      }
+
+      const [existing] = await db.query(
+        `SELECT id FROM productos WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
+        [id, tiendaId]
+      );
+      if (!existing.length) {
+        return res.status(404).json({ success: false, error: 'Producto no encontrado' });
+      }
+
+      const codigoRef = codigo ? normalizeCodigoRef(codigo) : normalizeCodigoRef('', id);
+      if (codigoRef) {
+        const [dup] = await db.query(
+          `SELECT id FROM productos
+           WHERE tienda_id = ? AND codigo_ref = ? AND id <> ? AND deleted_at IS NULL LIMIT 1`,
+          [tiendaId, codigoRef, id]
+        );
+        if (dup.length > 0) {
+          return res.status(409).json({ success: false, error: 'Ya existe otro producto con ese código' });
+        }
+      }
+
+      const normalizedCategoria = (categoria || 'General').trim();
+      const [catRows] = await db.query(
+        `SELECT id FROM categorias_producto
+         WHERE tienda_id = ? AND LOWER(nombre) = LOWER(?) AND deleted_at IS NULL LIMIT 1`,
+        [tiendaId, normalizedCategoria]
+      );
+      let categoriaId = catRows[0]?.id || null;
+      if (!categoriaId) {
+        const [insertCat] = await db.query(
+          `INSERT INTO categorias_producto (tienda_id, nombre) VALUES (?, ?)`,
+          [tiendaId, normalizedCategoria]
+        );
+        categoriaId = insertCat.insertId;
+      }
+
+      await db.query(
+        `UPDATE productos
+         SET nombre = ?, codigo_ref = ?, categoria_id = ?, precio_usd = ?, stock = ?, stock_minimo = ?
+         WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
+        [
+          nombre.trim(),
+          codigoRef,
+          categoriaId,
+          precioUsd,
+          stock ?? 0,
+          minStock ?? 5,
+          id,
+          tiendaId
+        ]
+      );
+
+      res.json({ success: true, message: 'Producto actualizado' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async deleteProduct(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId || 1;
+      const id = parseInt(req.params.id, 10);
+      if (!id) {
+        return res.status(400).json({ success: false, error: 'ID inválido' });
+      }
+
+      const [result] = await db.query(
+        `UPDATE productos
+         SET deleted_at = NOW(), activo = 0
+         WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
+        [id, tiendaId]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, error: 'Producto no encontrado' });
+      }
+
+      res.json({ success: true, message: 'Producto eliminado' });
     } catch (err) {
       next(err);
     }
@@ -244,7 +416,7 @@ class AdminController {
         `SELECT
           COUNT(CASE WHEN stock > 0 AND stock <= stock_minimo THEN 1 END) AS lowStock,
           COUNT(CASE WHEN stock = 0 THEN 1 END) AS emptyStock
-         FROM productos WHERE tienda_id = ?`,
+         FROM productos WHERE tienda_id = ? AND deleted_at IS NULL`,
         [tiendaId]
       );
 
@@ -256,7 +428,9 @@ class AdminController {
       if (hasCuentasFeature || isSuperAdmin) {
         const [[cuentas]] = await db.query(
           `SELECT COALESCE(SUM(monto_usd), 0) AS totalPendiente
-           FROM cuentas_pagar WHERE tienda_id = ? AND estado IN ('PENDIENTE', 'VENCIDA', 'PARCIAL')`,
+           FROM cuentas_pagar
+           WHERE tienda_id = ? AND deleted_at IS NULL
+             AND estado IN ('PENDIENTE', 'VENCIDA', 'PARCIAL')`,
           [tiendaId]
         );
         totalPendienteUsd = parseFloat(cuentas?.totalPendiente || 0);
