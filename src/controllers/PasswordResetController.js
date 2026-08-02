@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const UserModel = require('../models/UserModel');
 const PasswordResetModel = require('../models/PasswordResetModel');
-const { sendPasswordResetEmail } = require('../services/EmailService');
+const { sendPasswordResetEmail, isMailConfigured } = require('../services/EmailService');
 
 const GENERIC_MESSAGE =
   'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.';
@@ -22,24 +22,40 @@ class PasswordResetController {
         const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
         const resetUrl = `${frontendUrl}/restablecer-contrasena?token=${rawToken}`;
 
-        const emailResult = await sendPasswordResetEmail({
-          to: user.email,
-          userName: user.nombre,
-          resetUrl
-        });
+        try {
+          const emailResult = await sendPasswordResetEmail({
+            to: user.email,
+            userName: user.nombre,
+            resetUrl
+          });
 
-        if (emailResult.devMode) {
-          devResetUrl = resetUrl;
+          if (emailResult.devMode) {
+            devResetUrl = resetUrl;
+          }
+        } catch (emailErr) {
+          console.error('[lilit Email] Error al enviar recuperación:', emailErr.message);
+          if (!isMailConfigured()) {
+            devResetUrl = resetUrl;
+          } else {
+            return res.status(502).json({
+              success: false,
+              error: emailErr.message || 'No se pudo enviar el correo. Revisa la configuración de Resend/SMTP.'
+            });
+          }
         }
       }
 
       const response = {
         success: true,
-        message: GENERIC_MESSAGE
+        message: GENERIC_MESSAGE,
+        emailSent: Boolean(user && isMailConfigured() && !devResetUrl)
       };
 
-      if (process.env.NODE_ENV !== 'production' && devResetUrl) {
+      if (devResetUrl && !isMailConfigured()) {
         response.devResetUrl = devResetUrl;
+        response.message = 'Enlace de recuperación generado. Ábrelo abajo (modo local sin correo).';
+      } else if (user && isMailConfigured()) {
+        response.message = 'Te enviamos un enlace a tu correo. Revisa bandeja y spam.';
       }
 
       res.json(response);

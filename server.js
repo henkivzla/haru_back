@@ -1,6 +1,7 @@
 const app = require('./app');
 const env = require('./config/env');
 const db = require('./config/db');
+const { verifyMailConfig, isMailConfigured } = require('./src/services/EmailService');
 
 const PORT = env.PORT || 5000;
 
@@ -39,7 +40,29 @@ const server = app.listen(PORT, () => {
   }
   console.log(`Presiona Ctrl+C para detener.`);
   checkDatabase();
+  checkMail();
 });
+
+async function checkMail() {
+  const mailConfig = require('./config/mail');
+
+  if (!isMailConfigured()) {
+    console.warn(`⚠️  Correo no configurado (${mailConfig.MAIL_ENV}) — olvidé contraseña mostrará enlace local`);
+    if (mailConfig.MAIL_ENV === 'local') {
+      console.warn('   → Local: configura SMTP cPanel en .env (ver docs/configuracion-correo.md)');
+    } else {
+      console.warn('   → Producción: configura SMTP cPanel (ver .env.production.example)');
+    }
+    return;
+  }
+
+  try {
+    const status = await verifyMailConfig();
+    console.log(`✅ Correo listo [${mailConfig.getMailProfileLabel()}] — remitente: ${status.from}`);
+  } catch (err) {
+    console.error('❌ Correo mal configurado:', err.message);
+  }
+}
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {

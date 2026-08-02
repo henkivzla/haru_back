@@ -1,10 +1,8 @@
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+const mailConfig = require('../../config/mail');
 
-function isSmtpConfigured() {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-}
-
-function createTransporter() {
+function createSmtpTransporter() {
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || '587', 10),
@@ -16,16 +14,14 @@ function createTransporter() {
   });
 }
 
-async function sendPasswordResetEmail({ to, userName, resetUrl }) {
-  const from = process.env.SMTP_FROM || 'noreply@lilit.ve';
-  const subject = 'Restablece tu contraseña — lilit POS';
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-      <h2 style="color: #2563EB;">lilit POS</h2>
+function buildPasswordResetHtml({ userName, resetUrl }) {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0f172a;">
+      <h2 style="color: #2563EB; margin-bottom: 8px;">lilit POS</h2>
       <p>Hola ${userName || 'usuario'},</p>
       <p>Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón:</p>
       <p style="margin: 24px 0;">
-        <a href="${resetUrl}" style="background:#2563EB;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold;">
+        <a href="${resetUrl}" style="background:#2563EB;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
           Restablecer contraseña
         </a>
       </p>
@@ -33,21 +29,72 @@ async function sendPasswordResetEmail({ to, userName, resetUrl }) {
       <p style="color:#94A3B8;font-size:12px;word-break:break-all;">${resetUrl}</p>
     </div>
   `;
+}
 
-  if (!isSmtpConfigured()) {
-    console.log('\n[lilit Email DEV] Recuperación de contraseña');
-    console.log('Para:', to);
-    console.log('Enlace:', resetUrl);
-    console.log('');
-    return { sent: false, devMode: true };
+async function sendViaResend({ to, subject, html }) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const from = mailConfig.getFromAddress();
+  const { data, error } = await resend.emails.send({ from, to, subject, html });
+
+  if (error) {
+    const msg = error.message || 'Resend no pudo enviar el correo';
+    if (/only send testing emails to your own email/i.test(msg)) {
+      throw new Error(
+        'Resend (plan gratis): solo puedes enviar a henkivzla@gmail.com hasta verificar un dominio. '
+        + 'Usa ese correo en olvidé contraseña o verifica tu dominio en resend.com/domains.'
+      );
+    }
+    throw new Error(msg);
   }
 
-  const transporter = createTransporter();
+  console.log(`[lilit Email] Resend OK → ${to} (id: ${data?.id})`);
+  return { sent: true, devMode: false, provider: 'resend', id: data?.id };
+}
+
+async function sendViaSmtp({ to, subject, html }) {
+  const transporter = createSmtpTransporter();
+  const from = mailConfig.getFromAddress();
   await transporter.sendMail({ from, to, subject, html });
-  return { sent: true, devMode: false };
+  return { sent: true, devMode: false, provider: 'smtp' };
+}
+
+async function sendPasswordResetEmail({ to, userName, resetUrl }) {
+  const subject = 'Restablece tu contraseña — lilit POS';
+  const html = buildPasswordResetHtml({ userName, resetUrl });
+
+  if (mailConfig.MAIL_PROVIDER === 'resend' && mailConfig.isResendConfigured()) {
+    return sendViaResend({ to, subject, html });
+  }
+
+  if (mailConfig.isSmtpConfigured()) {
+    return sendViaSmtp({ to, subject, html });
+  }
+
+  console.log('\n[lilit Email DEV] Recuperación de contraseña');
+  console.log('Para:', to);
+  console.log('Enlace:', resetUrl);
+  console.log('Configura RESEND_API_KEY o SMTP en .env para envío real.\n');
+  return { sent: false, devMode: true, provider: 'console' };
+}
+
+async function verifyMailConfig() {
+  if (mailConfig.MAIL_PROVIDER === 'resend' && mailConfig.isResendConfigured()) {
+    return { ok: true, provider: 'resend', from: mailConfig.getFromAddress() };
+  }
+
+  if (mailConfig.isSmtpConfigured()) {
+    const transporter = createSmtpTransporter();
+    await transporter.verify();
+    return { ok: true, provider: 'smtp', from: mailConfig.getFromAddress() };
+  }
+
+  return { ok: false, provider: 'none' };
 }
 
 module.exports = {
   sendPasswordResetEmail,
-  isSmtpConfigured
+  verifyMailConfig,
+  isSmtpConfigured: mailConfig.isSmtpConfigured,
+  isResendConfigured: mailConfig.isResendConfigured,
+  isMailConfigured: mailConfig.isMailConfigured
 };

@@ -1,5 +1,5 @@
-const BASE_FEATURES = ['dashboard', 'pos', 'inventario', 'bcv', 'caja', 'resumen'];
-const ESTANDAR_FEATURES = ['cuentas', 'gastos', 'clientes'];
+const BASE_FEATURES = ['dashboard', 'pos', 'inventario', 'bcv', 'caja', 'resumen', 'clientes'];
+const ESTANDAR_FEATURES = ['cuentas', 'gastos'];
 const PRO_FEATURES = ['estadisticas', 'multi_sucursal'];
 
 const ROUTE_FEATURES = {

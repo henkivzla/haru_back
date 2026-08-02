@@ -50,3 +50,6 @@ CREATE TABLE IF NOT EXISTS sucursales (
 ALTER TABLE reportes_pago
   MODIFY COLUMN metodo_pago
     ENUM('PAGO_MOVIL','ZELLE','BINANCE','TRANSFERENCIA','EFECTIVO_USD','OTRO') NOT NULL;
+
+-- 009: apellido en clientes
+ALTER TABLE clientes ADD COLUMN apellido VARCHAR(150) NULL AFTER nombre;

@@ -1,23 +1,29 @@
 ﻿const db = require('../../config/db');
-
-// Schema normalizado v2.0:
-// - ventas: usa cliente_id (FK a clientes) en lugar de cliente_nombre/rif inline
-// - items_venta: reemplaza detalles_venta, incluye nombre_producto (snapshot)
-// - eliminado es_nota_entrega (no aplica en el nuevo modelo)
+const { createClienteFromVenta } = require('../services/clienteVentaService');
 
 class SaleModel {
-  static async createVenta({ cajaId, clienteNombre, clienteRif, montoUsd, montoBs, tasaBcv, metodoPago, items = [] }) {
+  static async createVenta({
+    cajaId,
+    tiendaId,
+    cliente = null,
+    montoUsd,
+    montoBs,
+    tasaBcv,
+    metodoPago,
+    items = [],
+  }) {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
 
-      // Insertar cabecera de venta
+      const clienteId = await createClienteFromVenta(connection, tiendaId, cliente);
+
       const [saleResult] = await connection.execute(
         `INSERT INTO ventas
          (caja_id, cliente_id, metodo_pago, tasa_bcv_aplicada,
           subtotal_usd, descuento_usd, monto_total_usd, monto_total_bs)
-         VALUES (?, NULL, ?, ?, ?, 0.00, ?, ?)`,
-        [cajaId, metodoPago, tasaBcv, montoUsd, montoUsd, montoBs]
+         VALUES (?, ?, ?, ?, ?, 0.00, ?, ?)`,
+        [cajaId, clienteId, metodoPago, tasaBcv, montoUsd, montoUsd, montoBs]
       );
 
       const ventaId = saleResult.insertId;
@@ -36,7 +42,7 @@ class SaleModel {
         // Descontar stock si hay producto ligado
         if (item.productoId) {
           await connection.execute(
-            `UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE id = ?`,
+            `UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE id = ? AND deleted_at IS NULL`,
             [item.cantidad || 1, item.productoId]
           );
         }

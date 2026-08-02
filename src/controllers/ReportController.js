@@ -38,7 +38,8 @@ class ReportController {
         const [[cuentas]] = await db.query(
           `SELECT COALESCE(SUM(monto_usd), 0) AS total
            FROM cuentas_pagar
-           WHERE tienda_id = ? AND estado IN ('PENDIENTE', 'VENCIDA', 'PARCIAL')`,
+           WHERE tienda_id = ? AND deleted_at IS NULL
+             AND estado IN ('PENDIENTE', 'VENCIDA', 'PARCIAL')`,
           [tiendaId]
         );
         cuentasPendientes = parseFloat(cuentas?.total || 0);

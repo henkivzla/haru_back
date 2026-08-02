@@ -5,7 +5,7 @@ class ClienteController {
     try {
       const tiendaId = req.user?.tiendaId;
       const [rows] = await db.query(
-        `SELECT id, nombre, rif_cedula AS rifCedula, telefono, email, direccion, activo
+        `SELECT id, nombre, apellido, rif_cedula AS rifCedula, telefono, email, direccion, activo
          FROM clientes
          WHERE tienda_id = ? AND deleted_at IS NULL
          ORDER BY nombre ASC`,
@@ -20,17 +20,19 @@ class ClienteController {
   static async create(req, res, next) {
     try {
       const tiendaId = req.user?.tiendaId;
-      const { nombre, rifCedula, telefono, email, direccion } = req.body;
-      if (!nombre?.trim()) {
-        return res.status(400).json({ success: false, error: 'El nombre del cliente es requerido' });
+      const { nombre, apellido, rifCedula, telefono, email, direccion } = req.body;
+      const nombreFinal = nombre?.trim() || apellido?.trim();
+      if (!nombreFinal) {
+        return res.status(400).json({ success: false, error: 'Indica al menos nombre o apellido' });
       }
 
       const [result] = await db.query(
-        `INSERT INTO clientes (tienda_id, nombre, rif_cedula, telefono, email, direccion)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO clientes (tienda_id, nombre, apellido, rif_cedula, telefono, email, direccion)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           tiendaId,
-          nombre.trim(),
+          nombreFinal,
+          apellido?.trim() || null,
           rifCedula?.trim() || null,
           telefono?.trim() || null,
           email?.trim() || null,
@@ -48,10 +50,13 @@ class ClienteController {
     try {
       const tiendaId = req.user?.tiendaId;
       const id = parseInt(req.params.id, 10);
-      await db.query(
-        `UPDATE clientes SET deleted_at = NOW() WHERE id = ? AND tienda_id = ?`,
+      const [result] = await db.query(
+        `UPDATE clientes SET deleted_at = NOW(), activo = 0 WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
         [id, tiendaId]
       );
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, error: 'Cliente no encontrado' });
+      }
       res.json({ success: true, message: 'Cliente eliminado' });
     } catch (err) {
       next(err);

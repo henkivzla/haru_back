@@ -5,7 +5,12 @@ const CasheaCalculatorService = require('../services/CasheaCalculatorService');
 class SaleController {
   async processSale(req, res, next) {
     try {
-      const { clienteNombre, clienteRif, montoUsd, tasaBcv = 36.50, metodoPago, items = [] } = req.body;
+      const { montoUsd, tasaBcv = 36.50, metodoPago, items = [], cliente = null } = req.body;
+      const tiendaId = req.user?.tiendaId;
+
+      if (!tiendaId) {
+        return res.status(400).json({ success: false, error: 'Tienda no identificada para esta venta.' });
+      }
 
       const activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
       const cajaId = req.body.cajaId || activeCaja?.id || null;
@@ -21,8 +26,8 @@ class SaleController {
 
       const ventaId = await SaleModel.createVenta({
         cajaId,
-        clienteNombre: clienteNombre || 'Cliente General',
-        clienteRif: clienteRif || 'V-00000000-0',
+        tiendaId,
+        cliente,
         montoUsd,
         montoBs,
         tasaBcv,

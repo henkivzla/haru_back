@@ -18,8 +18,9 @@ class AccountPayableModel {
          p.nombre             AS proveedor,
          p.rif                AS proveedor_rif
        FROM cuentas_pagar cp
-       LEFT JOIN proveedores p ON p.id = cp.proveedor_id
+       LEFT JOIN proveedores p ON p.id = cp.proveedor_id AND p.deleted_at IS NULL
        WHERE cp.tienda_id = ?
+         AND cp.deleted_at IS NULL
          AND cp.estado IN ('PENDIENTE', 'VENCIDA', 'PARCIAL')
        ORDER BY cp.fecha_vencimiento ASC`,
       [tiendaId]
@@ -31,7 +32,7 @@ class AccountPayableModel {
     const [result] = await db.execute(
       `UPDATE cuentas_pagar
        SET estado = 'PAGADA', pagada_at = NOW(), monto_pagado_usd = monto_usd
-       WHERE id = ?`,
+       WHERE id = ? AND deleted_at IS NULL`,
       [id]
     );
     return result.affectedRows > 0;

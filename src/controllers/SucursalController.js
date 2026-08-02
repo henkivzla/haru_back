@@ -70,10 +70,13 @@ class SucursalController {
     try {
       const tiendaId = req.user?.tiendaId;
       const id = parseInt(req.params.id, 10);
-      await db.query(
-        `UPDATE sucursales SET deleted_at = NOW() WHERE id = ? AND tienda_id = ?`,
+      const [result] = await db.query(
+        `UPDATE sucursales SET deleted_at = NOW(), activa = 0 WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
         [id, tiendaId]
       );
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, error: 'Sucursal no encontrada' });
+      }
       res.json({ success: true, message: 'Sucursal eliminada' });
     } catch (err) {
       next(err);
