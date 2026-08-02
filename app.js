@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const env = require('./config/env');
 const apiRoutes = require('./src/routes/apiRoutes');
 const errorHandler = require('./src/middlewares/errorHandler');
+const requestLogger = require('./src/middlewares/requestLogger');
 
 const app = express();
 
@@ -11,6 +13,10 @@ app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+if (env.NODE_ENV !== 'production') {
+  app.use(requestLogger);
+}
 
 // RUTA DE HEALTHCHECK
 app.get('/health', (req, res) => {
