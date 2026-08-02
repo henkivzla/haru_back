@@ -154,7 +154,8 @@ class AdminController {
 
       res.json({
         success: true,
-        message: `Pago #${pagoId} aprobado. Suscripción activada hasta ${proximoPago.toLocaleDateString('es-VE')}`
+        message: `Pago #${pagoId} aprobado. Suscripción activada hasta ${proximoPago.toLocaleDateString('es-VE')}`,
+        tiendaId: pago.tienda_id
       });
     } catch (err) {
       next(err);
@@ -247,11 +248,19 @@ class AdminController {
         [tiendaId]
       );
 
-      const [[cuentas]] = await db.query(
-        `SELECT COALESCE(SUM(monto_usd), 0) AS totalPendiente
-         FROM cuentas_pagar WHERE tienda_id = ? AND estado IN ('PENDIENTE', 'VENCIDA', 'PARCIAL')`,
-        [tiendaId]
-      );
+      const hasCuentasFeature = Array.isArray(req.user?.features)
+        && req.user.features.includes('cuentas');
+      const isSuperAdmin = (req.user?.role || '').toUpperCase() === 'SUPERADMIN';
+
+      let totalPendienteUsd = 0;
+      if (hasCuentasFeature || isSuperAdmin) {
+        const [[cuentas]] = await db.query(
+          `SELECT COALESCE(SUM(monto_usd), 0) AS totalPendiente
+           FROM cuentas_pagar WHERE tienda_id = ? AND estado IN ('PENDIENTE', 'VENCIDA', 'PARCIAL')`,
+          [tiendaId]
+        );
+        totalPendienteUsd = parseFloat(cuentas?.totalPendiente || 0);
+      }
 
       res.json({
         success: true,
@@ -260,7 +269,7 @@ class AdminController {
           totalVentas: ventas?.totalVentas || 0,
           lowStock: inventario?.lowStock || 0,
           emptyStock: inventario?.emptyStock || 0,
-          totalPendienteUsd: parseFloat(cuentas?.totalPendiente || 0)
+          totalPendienteUsd
         }
       });
     } catch (err) {

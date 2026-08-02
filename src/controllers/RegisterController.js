@@ -1,9 +1,7 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const db = require('../../config/db');
-const env = require('../../config/env');
 const UserModel = require('../models/UserModel');
-const { buildAuthPayload } = require('./authPayload');
+const { issueAuthToken } = require('./authPayload');
 
 const VALID_PLANS = { economico: 1, estandar: 2, pro: 3 };
 
@@ -22,10 +20,10 @@ class RegisterController {
         planSlug = 'estandar'
       } = req.body;
 
-      if (!nombre || !email || !password || !nombreComercio || !rif) {
+      if (!nombre || !email || !password || !nombreComercio) {
         return res.status(400).json({
           success: false,
-          error: 'Completa nombre, correo, contraseña, comercio y RIF'
+          error: 'Completa nombre, correo, contraseña y nombre del comercio'
         });
       }
       if (String(password).length < 8) {
@@ -33,7 +31,8 @@ class RegisterController {
       }
 
       const normalizedEmail = email.trim().toLowerCase();
-      const normalizedRif = rif.trim().toUpperCase();
+      const rawRif = (rif || '').trim();
+      const normalizedRif = rawRif ? rawRif.toUpperCase() : null;
       const slug = (planSlug || 'estandar').toLowerCase();
       const planId = VALID_PLANS[slug] || 2;
 
@@ -42,10 +41,12 @@ class RegisterController {
         return res.status(409).json({ success: false, error: 'Este correo ya está registrado' });
       }
 
-      const [rifRows] = await conn.execute(
-        'SELECT id FROM tiendas WHERE rif = ? AND deleted_at IS NULL LIMIT 1',
-        [normalizedRif]
-      );
+      const [rifRows] = normalizedRif
+        ? await conn.execute(
+            'SELECT id FROM tiendas WHERE rif = ? AND deleted_at IS NULL LIMIT 1',
+            [normalizedRif]
+          )
+        : [[]];
       if (rifRows.length) {
         return res.status(409).json({ success: false, error: 'Este RIF ya está registrado en lilit' });
       }
@@ -78,11 +79,7 @@ class RegisterController {
 
       const user = await UserModel.findById(userId);
       const subscription = await UserModel.findSubscriptionByTiendaId(tiendaId);
-      const { tokenPayload, userResponse } = buildAuthPayload(user, subscription);
-
-      const token = jwt.sign(tokenPayload, env.JWT_SECRET, {
-        expiresIn: env.JWT_EXPIRES_IN || '8h'
-      });
+      const { token, user: userResponse } = issueAuthToken(user, subscription);
 
       return res.status(201).json({
         success: true,

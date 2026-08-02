@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const UserModel = require('../models/UserModel');
+const { assertCanAddUser } = require('../services/planLimitService');
 
 const VALID_ESTADOS = ['ACTIVO', 'INACTIVO', 'BLOQUEADO'];
 const VALID_ROLES = ['SUPERADMIN', 'ADMIN', 'CAJERO'];
@@ -38,6 +39,10 @@ class UserController {
       }
       if (rol === 'SUPERADMIN' && tiendaId) {
         return res.status(400).json({ success: false, error: 'SUPERADMIN no puede tener tienda asignada' });
+      }
+
+      if (tiendaId && rol !== 'SUPERADMIN') {
+        await assertCanAddUser(tiendaId);
       }
 
       const existing = await UserModel.findByEmailIncludingInactive(email.trim().toLowerCase());
@@ -122,6 +127,10 @@ class UserController {
         // allow blocking other superadmins? safer to prevent blocking last superadmin - skip for now
       }
 
+      if (estado === 'ACTIVO' && target.tiendaId && target.estado !== 'ACTIVO') {
+        await assertCanAddUser(target.tiendaId);
+      }
+
       await UserModel.setEstado(userId, estado);
       const user = await UserModel.findByIdForAdmin(userId);
       res.json({ success: true, message: `Usuario ${estado.toLowerCase()}`, user });
@@ -160,6 +169,10 @@ class UserController {
       }
       if (!target.deleted_at) {
         return res.status(400).json({ success: false, error: 'El usuario no está eliminado' });
+      }
+
+      if (target.tiendaId) {
+        await assertCanAddUser(target.tiendaId);
       }
 
       await UserModel.restore(userId);

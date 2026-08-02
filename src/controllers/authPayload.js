@@ -1,3 +1,5 @@
+const jwt = require('jsonwebtoken');
+const env = require('../../config/env');
 const { resolveFeatures } = require('../config/planFeatures');
 
 function buildAuthPayload(user, subscription) {
@@ -42,4 +44,12 @@ function buildAuthPayload(user, subscription) {
   };
 }
 
-module.exports = { buildAuthPayload };
+function issueAuthToken(user, subscription) {
+  const { tokenPayload, userResponse } = buildAuthPayload(user, subscription);
+  const token = jwt.sign(tokenPayload, env.JWT_SECRET, {
+    expiresIn: env.JWT_EXPIRES_IN || '8h'
+  });
+  return { token, user: userResponse, tokenPayload };
+}
+
+module.exports = { buildAuthPayload, issueAuthToken };
