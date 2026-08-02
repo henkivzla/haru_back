@@ -12,7 +12,11 @@ const USER_SELECT = `
   u.updated_at,
   u.deleted_at,
   r.nombre AS rol,
-  t.nombre AS tienda_nombre
+  t.nombre AS tienda_nombre,
+  t.theme_mode AS tienda_theme_mode,
+  t.accent_key AS tienda_accent_key,
+  u.theme_mode AS user_theme_mode,
+  u.accent_key AS user_accent_key
 `;
 
 class UserModel {

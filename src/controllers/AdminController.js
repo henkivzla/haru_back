@@ -1,5 +1,6 @@
 const db = require('../../config/db');
 const { normalizeCodigoRef } = require('../utils/productCode');
+const { insertProduct } = require('../services/productService');
 
 const PLAN_BY_AMOUNT = { 15: 1, 18: 2, 22: 3 };
 
@@ -258,46 +259,92 @@ class AdminController {
       const tiendaId = req.user?.tiendaId || 1;
       const { codigo, nombre, categoria, precioUsd, stock, minStock } = req.body;
 
-      if (!nombre?.trim()) {
-        return res.status(400).json({ success: false, error: 'El nombre del producto es requerido' });
-      }
+      const result = await insertProduct({
+        tiendaId,
+        creadoPorId: req.user?.id,
+        nombre,
+        codigo,
+        categoria,
+        precioUsd,
+        stock,
+        minStock,
+      });
 
-      const codigoRef = normalizeCodigoRef(codigo);
-      const normalizedCategoria = (categoria || 'General').trim();
+      res.status(201).json({ success: true, id: result.id, message: 'Producto creado' });
+    } catch (err) {
+      if (err.message?.includes('Ya existe')) {
+        return res.status(409).json({ success: false, error: err.message });
+      }
+      if (err.message?.includes('requerido') || err.message?.includes('precio')) {
+        return res.status(400).json({ success: false, error: err.message });
+      }
+      next(err);
+    }
+  }
+
+  static async bulkCreateProducts(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId || 1;
       const creadoPorId = req.user?.id || null;
+      const items = req.body.items || req.body.productos || [];
 
-      const [existing] = await db.query(
-        `SELECT id FROM productos
-         WHERE tienda_id = ? AND codigo_ref = ? AND deleted_at IS NULL
-         LIMIT 1`,
-        [tiendaId, codigoRef]
-      );
-      if (existing.length > 0) {
-        return res.status(409).json({ success: false, error: 'Ya existe un producto con ese código' });
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ success: false, error: 'Envía un arreglo "items" con los productos' });
+      }
+      if (items.length > 500) {
+        return res.status(400).json({ success: false, error: 'Máximo 500 productos por carga' });
       }
 
-      const [catRows] = await db.query(
-        `SELECT id FROM categorias_producto
-         WHERE tienda_id = ? AND LOWER(nombre) = LOWER(?) AND deleted_at IS NULL
-         LIMIT 1`,
-        [tiendaId, normalizedCategoria]
-      );
+      const created = [];
+      const errors = [];
+      const usedCodes = new Set();
 
-      let categoriaId = catRows[0]?.id || null;
-      if (!categoriaId) {
-        const [insertCat] = await db.query(
-          `INSERT INTO categorias_producto (tienda_id, nombre) VALUES (?, ?)`,
-          [tiendaId, normalizedCategoria]
-        );
-        categoriaId = insertCat.insertId;
+      for (let i = 0; i < items.length; i++) {
+        const row = items[i] || {};
+        const rowLabel = row.rowNum || i + 1;
+
+        try {
+          const previewCodigo = normalizeCodigoRef(row.codigo, `${Date.now()}${i}`);
+          if (usedCodes.has(previewCodigo)) {
+            throw new Error(`Código duplicado en el archivo: ${previewCodigo}`);
+          }
+
+          const result = await insertProduct({
+            tiendaId,
+            creadoPorId,
+            nombre: row.nombre,
+            codigo: row.codigo,
+            categoria: row.categoria,
+            precioUsd: row.precioUsd,
+            stock: row.stock,
+            minStock: row.minStock,
+            codigoSuffixFallback: `${Date.now()}${i}`,
+          });
+
+          usedCodes.add(result.codigo);
+          created.push({
+            row: rowLabel,
+            id: result.id,
+            codigo: result.codigo,
+            nombre: String(row.nombre || '').trim(),
+          });
+        } catch (err) {
+          errors.push({
+            row: rowLabel,
+            nombre: String(row.nombre || '').trim(),
+            error: err.message,
+          });
+        }
       }
 
-      const [result] = await db.query(
-        `INSERT INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo, creado_por_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [tiendaId, categoriaId, codigoRef, nombre.trim(), precioUsd, stock || 0, minStock || 5, creadoPorId]
-      );
-      res.status(201).json({ success: true, id: result.insertId, message: 'Producto creado' });
+      res.json({
+        success: true,
+        message: `${created.length} producto(s) importados${errors.length ? `, ${errors.length} con error` : ''}`,
+        createdCount: created.length,
+        errorCount: errors.length,
+        created,
+        errors,
+      });
     } catch (err) {
       next(err);
     }

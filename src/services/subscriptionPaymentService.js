@@ -2,6 +2,9 @@ const METODO_MAP = {
   'Pago Móvil (Bs)': 'PAGO_MOVIL',
   'Binance (USDT)': 'BINANCE',
   'Transferencia Bancaria': 'TRANSFERENCIA',
+  'Mercantil Panamá': 'MERCANTIL_PANAMA',
+  Zinli: 'ZINLI',
+  PayPal: 'PAYPAL',
 };
 
 const PLAN_BY_LABEL = {
@@ -13,6 +16,12 @@ const PLAN_BY_LABEL = {
 const PLAN_BY_AMOUNT = { 15: 1, 18: 2, 22: 3 };
 const VALID_AMOUNTS = new Set([15, 18, 22]);
 const BINANCE_METHOD = 'Binance (USDT)';
+const NO_BANCO_METHODS = new Set([
+  BINANCE_METHOD,
+  'Zinli',
+  'PayPal',
+  'Mercantil Panamá',
+]);
 
 function resolvePlanId(plan, montoUsd) {
   if (plan && PLAN_BY_LABEL[plan]) return PLAN_BY_LABEL[plan];
@@ -38,7 +47,7 @@ function validateReportPayload(body) {
   if (!METODO_MAP[metodoPago]) {
     return { ok: false, status: 400, error: 'Método de pago no válido' };
   }
-  if (metodoPago !== BINANCE_METHOD && !String(bancoEmisor || '').trim()) {
+  if (!NO_BANCO_METHODS.has(metodoPago) && !String(bancoEmisor || '').trim()) {
     return { ok: false, status: 400, error: 'El banco emisor es requerido para este método de pago' };
   }
 
@@ -49,7 +58,7 @@ function validateReportPayload(body) {
       metodo: METODO_MAP[metodoPago],
       referencia: ref,
       montoUsd: amount,
-      bancoEmisor: metodoPago === BINANCE_METHOD ? null : String(bancoEmisor).trim().slice(0, 100),
+      bancoEmisor: NO_BANCO_METHODS.has(metodoPago) ? null : String(bancoEmisor).trim().slice(0, 100),
     },
   };
 }

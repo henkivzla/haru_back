@@ -1,7 +1,7 @@
 -- ============================================================================
--- LILIT POS VENEZUELA — SCHEMA NORMALIZADO v2.4
+-- LILIT POS VENEZUELA — SCHEMA NORMALIZADO v2.5
 -- Autor: @henkivzla
--- Incluye: clientes.apellido, Binance, gastos, sucursales, soft delete, productos.creado_por_id
+-- Incluye: clientes.apellido, Binance, gastos, sucursales, soft delete, productos.creado_por_id, apariencia tienda/usuario
 -- Usa SOLO este archivo para crear o resetear la BD (no migraciones sueltas).
 -- IMPORTANTE: Este script BORRA la base de datos existente y la recrea desde cero.
 -- Importar en phpMyAdmin: pestaña Importar → database/schema.sql
@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS tiendas (
   rif         VARCHAR(30)  NULL UNIQUE,
   direccion   TEXT         NULL,
   telefono    VARCHAR(30)  NULL,
+  theme_mode  ENUM('light','dark') NOT NULL DEFAULT 'dark',
+  accent_key  VARCHAR(20)  NOT NULL DEFAULT 'default',
   activo      TINYINT(1)   NOT NULL DEFAULT 1,
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -79,6 +81,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre        VARCHAR(100)  NOT NULL,
   email         VARCHAR(150)  NOT NULL UNIQUE,
   password_hash VARCHAR(255)  NOT NULL,
+  theme_mode    ENUM('light','dark') NULL DEFAULT NULL,
+  accent_key    VARCHAR(20)       NULL DEFAULT NULL,
   activo        TINYINT(1)    NOT NULL DEFAULT 1,
   estado        ENUM('ACTIVO','INACTIVO','BLOQUEADO') NOT NULL DEFAULT 'ACTIVO',
   ultimo_login  TIMESTAMP     NULL,
@@ -135,7 +139,7 @@ CREATE TABLE IF NOT EXISTS reportes_pago (
   tienda_id       INT UNSIGNED     NOT NULL,
   suscripcion_id  INT UNSIGNED     NULL,
   plan_id         TINYINT UNSIGNED NOT NULL,
-  metodo_pago     ENUM('PAGO_MOVIL','ZELLE','BINANCE','TRANSFERENCIA','EFECTIVO_USD','OTRO') NOT NULL,
+  metodo_pago     ENUM('PAGO_MOVIL','ZELLE','BINANCE','TRANSFERENCIA','MERCANTIL_PANAMA','ZINLI','PAYPAL','EFECTIVO_USD','OTRO') NOT NULL,
   referencia      VARCHAR(100)  NOT NULL,
   monto_usd       DECIMAL(10,2) NOT NULL,
   banco_emisor    VARCHAR(100)  NULL,

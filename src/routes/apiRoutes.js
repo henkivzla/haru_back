@@ -18,6 +18,7 @@ const GastoController = require('../controllers/GastoController');
 const SucursalController = require('../controllers/SucursalController');
 const ReportController = require('../controllers/ReportController');
 const TeamController = require('../controllers/TeamController');
+const AppearanceController = require('../controllers/AppearanceController');
 const { reportPaymentLimiter } = require('../middlewares/rateLimit');
 
 const adminOnly = checkRole(['ADMIN', 'SUPERADMIN']);
@@ -27,6 +28,9 @@ const storeAdmin = checkRole(['ADMIN']);
 router.post('/auth/register', (req, res, next) => RegisterController.register(req, res, next));
 router.post('/auth/login', (req, res, next) => AuthController.login(req, res, next));
 router.get('/auth/me', verifyToken, (req, res, next) => AuthController.getProfile(req, res, next));
+router.get('/apariencia', verifyToken, (req, res, next) => AppearanceController.getAppearance(req, res, next));
+router.patch('/tienda/apariencia', verifyToken, storeAdmin, (req, res, next) => AppearanceController.updateStoreAppearance(req, res, next));
+router.patch('/auth/apariencia', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AppearanceController.updatePersonalAppearance(req, res, next));
 router.post('/auth/verify-admin-action', verifyToken, adminOnly, (req, res, next) => AuthController.verifyAdminAction(req, res, next));
 router.post('/auth/forgot-password', (req, res, next) => PasswordResetController.forgotPassword(req, res, next));
 router.post('/auth/reset-password', (req, res, next) => PasswordResetController.resetPassword(req, res, next));
@@ -79,6 +83,7 @@ router.post('/suscripciones/reportar-pago', verifyToken, storeAdmin, reportPayme
 router.get('/productos/categorias', verifyToken, checkSubscriptionActive, checkFeature('inventario'), (req, res, next) => AdminController.getCategories(req, res, next));
 router.get('/productos/:id', verifyToken, checkSubscriptionActive, checkFeature('inventario'), (req, res, next) => AdminController.getProductById(req, res, next));
 router.get('/productos', verifyToken, checkSubscriptionActive, checkFeature('inventario'), (req, res, next) => AdminController.getProducts(req, res, next));
+router.post('/productos/carga-masiva', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('inventario'), (req, res, next) => AdminController.bulkCreateProducts(req, res, next));
 router.post('/productos', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('inventario'), (req, res, next) => AdminController.createProduct(req, res, next));
 router.patch('/productos/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('inventario'), (req, res, next) => AdminController.updateProduct(req, res, next));
 router.delete('/productos/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('inventario'), (req, res, next) => AdminController.deleteProduct(req, res, next));

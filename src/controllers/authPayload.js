@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
 const { resolveFeatures } = require('../config/planFeatures');
+const { resolveAppearance } = require('../constants/accentPalette');
 
 function buildAuthPayload(user, subscription) {
   const role = user.rol;
@@ -15,6 +16,9 @@ function buildAuthPayload(user, subscription) {
   if (!isSuperAdmin && subscription && !subscriptionActive) {
     features = ['planes'];
   }
+
+  const appearance = resolveAppearance(user);
+  const canCustomizeAppearance = isSuperAdmin || role === 'ADMIN';
 
   return {
     tokenPayload: {
@@ -39,7 +43,9 @@ function buildAuthPayload(user, subscription) {
       proximoPago: subscription?.proximoPago || null,
       maxUsuarios: subscription?.maxUsuarios || (planSlug === 'pro' ? 999 : planSlug === 'estandar' ? 3 : 1),
       features,
-      subscriptionActive
+      subscriptionActive,
+      appearance,
+      canCustomizeAppearance
     }
   };
 }
