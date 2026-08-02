@@ -43,7 +43,7 @@ const server = app.listen(PORT, HOST, () => {
   const mode = env.NODE_ENV || 'development';
   const lanIp = getLocalIpv4();
   console.log(`=================================================`);
-  console.log(`🚀 lilit Backend API — puerto ${PORT} (${mode})`);
+  console.log(`🚀 Haru Backend API — puerto ${PORT} (${mode})`);
   console.log(`🇻🇪 Listo para Venezuela / cPanel Passenger`);
   console.log(`=================================================`);
   console.log(`→ http://localhost:${PORT}`);
@@ -75,8 +75,17 @@ async function checkMail() {
   try {
     const status = await verifyMailConfig();
     console.log(`✅ Correo listo [${mailConfig.getMailProfileLabel()}] — remitente: ${status.from}`);
+    if (mailConfig.PAYMENT_NOTIFY_EMAIL) {
+      console.log(`   Avisos de pago → ${mailConfig.PAYMENT_NOTIFY_EMAIL}`);
+    }
   } catch (err) {
     console.error('❌ Correo mal configurado:', err.message);
+    if (/535|authentication/i.test(err.message)) {
+      console.error('   → El buzón SMTP_USER no existe en cPanel o SMTP_PASS es incorrecta.');
+      console.error(`   → Crea ${process.env.SMTP_USER || 'haru@henki.com.ve'} en cPanel → Email Accounts.`);
+      console.error('   → Prueba: npm run test:email -- gomezeiborth@gmail.com');
+      console.error('   → Guía: docs/configuracion-correo.md');
+    }
   }
 }
 

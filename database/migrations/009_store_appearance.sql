@@ -1,7 +1,7 @@
 -- Migración v2.5: apariencia por tienda (admin) y superadmin (usuario)
 -- Ejecutar solo si ya tienes la BD v2.4 y no quieres reimportar schema.sql completo
 
-USE lilit_db;
+USE haru_db;
 
 ALTER TABLE tiendas
   ADD COLUMN IF NOT EXISTS theme_mode ENUM('light','dark') NOT NULL DEFAULT 'dark' AFTER telefono,

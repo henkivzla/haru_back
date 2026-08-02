@@ -48,7 +48,7 @@ class RegisterController {
           )
         : [[]];
       if (rifRows.length) {
-        return res.status(409).json({ success: false, error: 'Este RIF ya está registrado en lilit' });
+        return res.status(409).json({ success: false, error: 'Este RIF ya está registrado en Haru' });
       }
 
       await conn.beginTransaction();
@@ -83,7 +83,7 @@ class RegisterController {
 
       return res.status(201).json({
         success: true,
-        message: 'Cuenta creada. ¡Bienvenido a lilit!',
+        message: 'Cuenta creada. ¡Bienvenido a Haru!',
         token,
         user: userResponse
       });

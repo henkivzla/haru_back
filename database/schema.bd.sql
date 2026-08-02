@@ -1,12 +1,12 @@
 -- ============================================================================
--- LILIT POS VENEZUELA — SCHEMA COMPLETO v2.3 (schema.bd.sql)
+-- HARU POS VENEZUELA — SCHEMA COMPLETO v2.3 (schema.bd.sql)
 -- Importar este archivo en phpMyAdmin → Importar
--- ⚠️  BORRA lilit_db y la recrea. Usa SOLO este archivo (no migraciones sueltas).
+-- ⚠️  BORRA haru_db y la recrea. Usa SOLO este archivo (no migraciones sueltas).
 -- ============================================================================
 
-DROP DATABASE IF EXISTS lilit_db;
-CREATE DATABASE lilit_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE lilit_db;
+DROP DATABASE IF EXISTS haru_db;
+CREATE DATABASE haru_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE haru_db;
 
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO';
@@ -385,12 +385,12 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- Tiendas demo
 INSERT IGNORE INTO tiendas (id, nombre, rif, direccion, telefono) VALUES
-  (1, 'Comercio Demo lilit', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas, VE', '+58 412 1234567'),
-  (2, 'Inversiones lilit Vzla', 'J-87654321-0', 'Centro Comercial, Valencia, VE', '+58 424 7654321');
+  (1, 'Comercio Demo Haru', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas, VE', '+58 412 1234567'),
+  (2, 'Inversiones Haru Vzla', 'J-87654321-0', 'Centro Comercial, Valencia, VE', '+58 424 7654321');
 
--- Usuarios demo (password: lilit2026)
+-- Usuarios demo (password inicial SUPERADMIN y demos: haru2026)
 INSERT IGNORE INTO usuarios (id, tienda_id, rol_id, nombre, email, password_hash, estado) VALUES
-  (1, NULL, 1, 'Diego Aponte (Dueño)', 'dueno@lilit.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
+  (1, NULL, 1, 'Eiborth Gómez', 'gomezeiborth@gmail.com', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
   (2, 2, 2, 'Carlos Mendoza (Gerente)', 'gerente@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
   (3, 2, 3, 'María Gómez (Cajera)', 'cajero@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
   (4, 1, 2, 'Diego Aponte', 'diego@negocio.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO');

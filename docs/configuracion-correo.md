@@ -1,53 +1,59 @@
+# Correo Haru POS — cPanel (local + producción)
+
+Un solo bloque SMTP sirve para **olvidé contraseña** y **aviso de reporte de pago**.
+
+| Uso | Destinatario |
+|-----|--------------|
+| Olvidé contraseña | El correo que el usuario escribió en el formulario |
+| Reporte de pago | `PAYMENT_NOTIFY_EMAIL` (admin, ej. `gomezeiborth@gmail.com`) |
+
+---
+
 ## Tu hosting — henki.com.ve
 
-| Variable | Valor |
-|----------|-------|
-| `SMTP_HOST` | `mail.henki.com.ve` |
-| `SMTP_USER` | `lilit@henki.com.ve` |
-| `SMTP_FROM` | `lilit POS <lilit@henki.com.ve>` |
-| `FRONTEND_URL` (prod) | `https://henki.com.ve` |
+| Variable | Local (`.env`) | Producción (cPanel Node) |
+|----------|----------------|---------------------------|
+| `MAIL_ENV` | `local` | `production` |
+| `MAIL_PROVIDER` | `smtp` | `smtp` |
+| `SMTP_HOST` | `mail.henki.com.ve` | `mail.henki.com.ve` |
+| `SMTP_PORT` | `587` | `587` |
+| `SMTP_SECURE` | `false` | `false` |
+| `SMTP_USER` | `haru@henki.com.ve` | `haru@henki.com.ve` |
+| `SMTP_PASS` | contraseña del buzón | misma contraseña |
+| `SMTP_FROM` | `Haru POS <haru@henki.com.ve>` | igual |
+| `FRONTEND_URL` | `http://localhost:5173` | `https://henki.com.ve` |
+| `PAYMENT_NOTIFY_EMAIL` | `gomezeiborth@gmail.com` | igual |
 
-Local ya configurado en `.env`. Producción: copia las variables de `.env.production.example` al Node.js App de cPanel.
-
----
-
-## Paso 1 — Crear correo en cPanel
-
-1. Entra a **cPanel** de tu hosting  
-2. **Email Accounts** → **Create**  
-3. Email: `noreply@tudominio.ve`  
-4. Contraseña: anótala  
-5. **Create**
+Plantillas: `.env.example` (local) y `.env.production.example` (cPanel).
 
 ---
 
-## Paso 2 — Datos SMTP
+## Paso 1 — Crear buzón en cPanel (obligatorio)
 
-1. cPanel → **Email Accounts** → **Connect Devices** (junto al correo)  
-2. Anota:
+1. cPanel → **Email Accounts** → **Create**
+2. Email: **`haru@henki.com.ve`**
+3. Contraseña: anótala (la misma irá en `SMTP_PASS`)
+4. **Create**
 
-| Campo | Ejemplo |
-|-------|---------|
-| Servidor | `mail.tudominio.ve` |
-| Puerto | `587` (TLS) o `465` (SSL) |
-| Usuario | `noreply@tudominio.ve` |
-| Contraseña | la que creaste |
+`SMTP_USER` y la dirección en `SMTP_FROM` deben ser ese buzón real.
 
 ---
 
-## Paso 3 — LOCAL (XAMPP)
+## Paso 2 — LOCAL (XAMPP + `npm run dev`)
 
-Edita `.env` en el backend:
+Copia `.env.example` → `.env` y completa:
 
 ```env
+MAIL_ENV=local
 MAIL_PROVIDER=smtp
-SMTP_HOST=mail.tudominio.ve
+SMTP_HOST=mail.henki.com.ve
 SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USER=noreply@tudominio.ve
-SMTP_PASS=tu_contraseña
-SMTP_FROM=lilit POS <noreply@tudominio.ve>
+SMTP_USER=haru@henki.com.ve
+SMTP_PASS=contraseña_del_buzón
+SMTP_FROM=Haru POS <haru@henki.com.ve>
 FRONTEND_URL=http://localhost:5173
+PAYMENT_NOTIFY_EMAIL=gomezeiborth@gmail.com
 ```
 
 ```powershell
@@ -55,35 +61,46 @@ npm run dev
 npm run test:email -- gomezeiborth@gmail.com
 ```
 
-Deberías ver: `✅ Correo listo [cpanel (local)]`
+Deberías ver:
+
+```
+✅ Correo listo [cpanel (local)] — remitente: Haru POS <haru@henki.com.ve>
+   Avisos de pago → gomezeiborth@gmail.com
+```
+
+Prueba solo olvidé contraseña o solo aviso de pago:
+
+```powershell
+npm run test:email -- gomezeiborth@gmail.com reset
+npm run test:email -- gomezeiborth@gmail.com pago
+```
 
 ---
 
-## Paso 4 — PRODUCCIÓN (cPanel Node.js)
+## Paso 3 — PRODUCCIÓN (cPanel Node.js)
 
-En **Setup Node.js App** → **Environment Variables**, las mismas variables de correo más:
+En **Setup Node.js App** → **Environment Variables**, copia las variables de `.env.production.example` (mismo bloque SMTP + `PAYMENT_NOTIFY_EMAIL`).
+
+Importante en producción:
 
 ```env
 NODE_ENV=production
 MAIL_ENV=production
-FRONTEND_URL=https://tudominio.ve
-CORS_ORIGIN=https://tudominio.ve
-DB_HOST=localhost
-DB_USER=...
-DB_PASSWORD=...
-DB_NAME=...
-JWT_SECRET=...
+FRONTEND_URL=https://henki.com.ve
+CORS_ORIGIN=https://henki.com.ve
 ```
 
-(Ver `.env.production.example` completo.)
+Reinicia la app Node en cPanel después de guardar variables.
 
 ---
 
-## Base de datos
+## Error 535 — Incorrect authentication data
 
-**Local:** importa `database/schema.sql` en XAMPP/phpMyAdmin  
-
-**Producción:** crea BD en cPanel → MySQL® Databases → importa `schema.sql` en phpMyAdmin
+| Causa | Solución |
+|-------|----------|
+| Buzón no existe | Crea `haru@henki.com.ve` en cPanel |
+| Contraseña distinta | `SMTP_PASS` = misma contraseña del buzón |
+| Puerto bloqueado | Prueba `SMTP_PORT=465` y `SMTP_SECURE=true` |
 
 ---
 
@@ -91,7 +108,8 @@ JWT_SECRET=...
 
 | Problema | Solución |
 |----------|----------|
-| SMTP auth failed | Revisa usuario/contraseña del correo cPanel |
-| Connection timeout | Algunos ISP bloquean puerto 587; prueba `465` + `SMTP_SECURE=true` |
-| Correo en spam | Normal al inicio; el destinatario marca como “No es spam” |
+| SMTP auth failed (535) | Ver tabla arriba |
+| Connection timeout | ISP bloquea 587; prueba 465 + `SMTP_SECURE=true` |
+| Correo en spam | Marca como “No es spam” la primera vez |
 | Link reset roto | `FRONTEND_URL` debe ser la URL real del frontend |
+| No llega aviso de pago | Revisa `PAYMENT_NOTIFY_EMAIL` y que SMTP esté OK (`test:email`) |

@@ -1,5 +1,5 @@
 -- Migración: métodos Mercantil Panamá, Zinli y PayPal en reportes de pago
-USE lilit_db;
+USE haru_db;
 
 ALTER TABLE reportes_pago
   MODIFY COLUMN metodo_pago

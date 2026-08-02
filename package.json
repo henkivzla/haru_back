@@ -1,7 +1,7 @@
 {
-  "name": "fina-pos-backend",
+  "name": "haru-pos-backend",
   "version": "1.0.0",
-  "description": "Backend API para Fina POS ERP Venezuela (Express MVC + MySQL cPanel)",
+  "description": "Backend API para Haru POS ERP Venezuela (Express MVC + MySQL cPanel)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

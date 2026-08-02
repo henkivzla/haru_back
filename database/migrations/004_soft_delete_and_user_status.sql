@@ -1,5 +1,5 @@
 -- Soft delete + estado de usuarios (ejecutar UNA vez sobre BD existente)
-USE lilit_db;
+USE haru_db;
 
 ALTER TABLE usuarios
   ADD COLUMN estado ENUM('ACTIVO','INACTIVO','BLOQUEADO') NOT NULL DEFAULT 'ACTIVO' AFTER activo,

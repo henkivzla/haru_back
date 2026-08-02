@@ -6,7 +6,7 @@ Las fotos **no se guardan en MySQL**. Solo se almacena la ruta en `productos.ima
 
 | Variable | Local | cPanel (producción) |
 |----------|-------|---------------------|
-| `UPLOAD_DIR` | `./uploads` | `/home/TU_USUARIO/lilit-pos-backend/uploads` |
+| `UPLOAD_DIR` | `./uploads` | `/home/TU_USUARIO/haru-pos-backend/uploads` |
 | `API_PUBLIC_URL` | `http://localhost:5000` | `https://api.tudominio.com` |
 
 El frontend debe poder abrir `{API_PUBLIC_URL}/uploads/productos/{tienda}/{archivo}.webp`.
@@ -39,11 +39,11 @@ Las imágenes quedan en `uploads/productos/{tienda_id}/`.
 
 1. Crea la carpeta persistente (fuera de `public_html` si es posible):
    ```
-   /home/usuario/lilit-pos-backend/uploads
+   /home/usuario/haru-pos-backend/uploads
    ```
 2. En **Setup Node.js App → Environment Variables**:
    ```
-   UPLOAD_DIR=/home/usuario/lilit-pos-backend/uploads
+   UPLOAD_DIR=/home/usuario/haru-pos-backend/uploads
    API_PUBLIC_URL=https://api.tudominio.com
    ```
 3. Reinicia la aplicación Node.

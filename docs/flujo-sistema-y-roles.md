@@ -1,4 +1,4 @@
-# Flujo del sistema y roles — lilit POS
+# Flujo del sistema y roles — Haru POS
 
 ## Arquitectura general
 
@@ -9,7 +9,7 @@
 └─────────────────┘                      └──────────┬───────────┘
                                                     │
                                          ┌──────────▼───────────┐
-                                         │  MySQL (lilit_db)    │
+                                         │  MySQL (haru_db)    │
                                          └──────────────────────┘
 ```
 
@@ -75,7 +75,7 @@ sequenceDiagram
 
 ## Flujo por rol — SUPERADMIN
 
-1. Login con `dueno@lilit.ve`
+1. Login con `gomezeiborth@gmail.com`
 2. Accede a `/admin` (Control SaaS)
 3. **Comercios:** ver tiendas, cambiar plan, suspender/activar suscripción
 4. **Usuarios:** crear, editar, activar, inactivar, bloquear, eliminar (soft), restaurar

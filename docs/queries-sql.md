@@ -1,6 +1,6 @@
-# Queries SQL — lilit POS
+# Queries SQL — Haru POS
 
-Base de datos: **`lilit_db`** (MySQL 8+).  
+Base de datos: **`haru_db`** (MySQL 8+).  
 Schema completo: `database/schema.sql`
 
 ---
@@ -249,5 +249,5 @@ GROUP BY t.id;
 | `004_soft_delete_and_user_status.sql` | Soft delete + estado usuarios |
 
 ```bash
-mysql -u root -p lilit_db < database/migrations/004_soft_delete_and_user_status.sql
+mysql -u root -p haru_db < database/migrations/004_soft_delete_and_user_status.sql
 ```

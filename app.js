@@ -30,7 +30,7 @@ if (env.NODE_ENV !== 'production') {
 
 // RUTA DE HEALTHCHECK
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Fina POS Venezuela API funcionando correctamente', timestamp: new Date() });
+  res.json({ status: 'OK', message: 'Haru POS Venezuela API funcionando correctamente', timestamp: new Date() });
 });
 
 // RUTAS API

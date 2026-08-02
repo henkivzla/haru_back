@@ -1,5 +1,5 @@
 -- Gastos administrativos + sucursales (Plan Estándar / Pro)
-USE lilit_db;
+USE haru_db;
 
 CREATE TABLE IF NOT EXISTS gastos_administrativos (
   id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,

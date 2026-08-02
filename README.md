@@ -1,13 +1,13 @@
-# lilit POS — Backend API
+# Haru POS — Backend API
 
-Backend Express + MySQL para el ERP/POS venezolano **lilit**: autenticación JWT, multi-tenant por tienda, planes SaaS, caja, ventas, inventario y panel SUPERADMIN.
+Backend Express + MySQL para el ERP/POS venezolano **Haru**: autenticación JWT, multi-tenant por tienda, planes SaaS, caja, ventas, inventario y panel SUPERADMIN.
 
 ## Repos relacionados
 
 | Repo | Descripción |
 |------|-------------|
-| **lilit-pos-backend** (este) | API REST |
-| **lilit-pos-venezuela** | Frontend React + Vite |
+| **haru-pos-backend** (este) | API REST |
+| **haru-pos-front** | Frontend React + Vite |
 
 ## Inicio rápido
 
@@ -15,7 +15,7 @@ Backend Express + MySQL para el ERP/POS venezolano **lilit**: autenticación JWT
 npm install
 copy .env.example .env
 # Configurar MySQL en .env
-mysql -u root -p lilit_db < database/schema.sql
+mysql -u root -p haru_db < database/schema.sql
 npm run seed:users
 npm run dev
 ```
@@ -31,7 +31,7 @@ API: `http://localhost:5000/api`
 | [docs/flujo-sistema-y-roles.md](docs/flujo-sistema-y-roles.md) | Arquitectura, roles y flujos |
 | [docs/configuracion-backend.md](docs/configuracion-backend.md) | Setup detallado del backend |
 
-Frontend: ver README en `lilit-pos-venezuela`.
+Frontend: ver README en `haru-pos-front`.
 
 ## Stack
 

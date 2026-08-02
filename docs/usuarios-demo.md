@@ -1,17 +1,27 @@
-# Usuarios demo — lilit POS
+# Usuarios demo — Haru POS
 
-Contraseña común para todos los usuarios de prueba: **`lilit2026`**
+Contraseña inicial del **SUPERADMIN** y usuarios demo: **`haru2026`** (cámbiala tras el primer login).
 
-> Regenerar hashes: `npm run seed:users` en el backend.
+> Regenerar hashes demo: `npm run seed:users` en el backend.
 
-## Tabla de acceso
+## SUPERADMIN (producción)
+
+| Campo | Valor |
+|-------|-------|
+| Nombre | Eiborth Gómez |
+| Email | `gomezeiborth@gmail.com` |
+| Teléfono | +58 4129852460 |
+| Contraseña inicial | `haru2026` |
+| Rol | SUPERADMIN — panel `/admin`, pagos, comercios |
+
+## Tabla de acceso demo
 
 | Email | Contraseña | Rol | Tienda | Plan (tienda) | Uso |
 |-------|------------|-----|--------|---------------|-----|
-| `dueno@lilit.ve` | lilit2026 | SUPERADMIN | — | Pro (global) | Panel SaaS, gestión de usuarios, comercios y pagos |
-| `diego@negocio.ve` | lilit2026 | ADMIN | Comercio Demo lilit (#1) | Pro | Dueño del comercio demo, todas las features Pro |
-| `gerente@tienda.ve` | lilit2026 | ADMIN | Inversiones lilit Vzla (#2) | Estándar | Admin tienda 2, cuentas y clientes |
-| `cajero@tienda.ve` | lilit2026 | CAJERO | Inversiones lilit Vzla (#2) | Estándar | Solo POS y caja |
+| `gomezeiborth@gmail.com` | haru2026 | SUPERADMIN | — | Pro (global) | Panel SaaS, gestión de usuarios, comercios y pagos |
+| `diego@negocio.ve` | haru2026 | ADMIN | Comercio Demo Haru (#1) | Pro | Dueño del comercio demo, todas las features Pro |
+| `gerente@tienda.ve` | haru2026 | ADMIN | Inversiones Haru Vzla (#2) | Estándar | Admin tienda 2, cuentas y clientes |
+| `cajero@tienda.ve` | haru2026 | CAJERO | Inversiones Haru Vzla (#2) | Estándar | Solo POS y caja |
 
 ## Estados de usuario
 

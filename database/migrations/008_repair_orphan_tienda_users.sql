@@ -1,7 +1,7 @@
 -- Repara usuarios cuyo tienda_id no existe en tiendas (causa error al reportar pago)
--- Ejecutar en phpMyAdmin sobre lilit_db. Revisa el SELECT antes del INSERT.
+-- Ejecutar en phpMyAdmin sobre haru_db. Revisa el SELECT antes del INSERT.
 
-USE lilit_db;
+USE haru_db;
 
 -- 1) Ver usuarios huérfanos (tienen tienda_id pero la tienda no existe)
 SELECT u.id, u.nombre, u.email, u.tienda_id

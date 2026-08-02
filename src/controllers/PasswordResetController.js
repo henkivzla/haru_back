@@ -33,7 +33,7 @@ class PasswordResetController {
             devResetUrl = resetUrl;
           }
         } catch (emailErr) {
-          console.error('[lilit Email] Error al enviar recuperación:', emailErr.message);
+          console.error('[haru Email] Error al enviar recuperación:', emailErr.message);
           if (!isMailConfigured()) {
             devResetUrl = resetUrl;
           } else {

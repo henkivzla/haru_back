@@ -1,11 +1,11 @@
 -- =============================================================================
--- lilit POS — Migraciones pendientes (BD existente)
--- Ejecutar en phpMyAdmin o mysql CLI sobre lilit_db
+-- Haru POS — Migraciones pendientes (BD existente)
+-- Ejecutar en phpMyAdmin o mysql CLI sobre haru_db
 -- Si una línea falla con "Duplicate column", esa parte ya estaba aplicada.
 -- Instalación nueva: importar database/schema.sql completo.
 -- =============================================================================
 
-USE lilit_db;
+USE haru_db;
 
 -- 004: soft delete
 ALTER TABLE usuarios ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL;

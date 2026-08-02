@@ -8,7 +8,7 @@ class Database {
         host: process.env.DB_HOST || 'localhost',
         user: process.env.DB_USER || 'root',
         password: process.env.DB_PASSWORD || process.env.DB_PASS || '',
-        database: process.env.DB_NAME || 'lilit_db',
+        database: process.env.DB_NAME || 'haru_db',
         port: process.env.DB_PORT || 3306,
         waitForConnections: true,
         connectionLimit: parseInt(process.env.DB_POOL_LIMIT, 10) || 10,

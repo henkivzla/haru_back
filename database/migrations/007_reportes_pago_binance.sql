@@ -1,5 +1,5 @@
 -- Agrega Binance como método de pago en reportes de suscripción
-USE lilit_db;
+USE haru_db;
 
 ALTER TABLE reportes_pago
   MODIFY COLUMN metodo_pago

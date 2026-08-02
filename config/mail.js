@@ -23,9 +23,9 @@ function isMailConfigured() {
 
 function getFromAddress() {
   if (MAIL_PROVIDER === 'resend' && isResendConfigured()) {
-    return process.env.RESEND_FROM || 'lilit POS <onboarding@resend.dev>';
+    return process.env.RESEND_FROM || 'Haru POS <onboarding@resend.dev>';
   }
-  return process.env.SMTP_FROM || 'lilit POS <noreply@lilit.ve>';
+  return process.env.SMTP_FROM || 'Haru POS <noreply@haru.ve>';
 }
 
 function getMailProfileLabel() {
@@ -44,5 +44,6 @@ module.exports = {
   isMailConfigured,
   getFromAddress,
   getMailProfileLabel,
-  FRONTEND_URL: (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '')
+  FRONTEND_URL: (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, ''),
+  PAYMENT_NOTIFY_EMAIL: (process.env.PAYMENT_NOTIFY_EMAIL || 'gomezeiborth@gmail.com').trim()
 };

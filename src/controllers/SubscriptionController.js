@@ -1,6 +1,7 @@
 const db = require('../../config/db');
 const UserModel = require('../models/UserModel');
 const { issueAuthToken } = require('./authPayload');
+const { sendPaymentReportNotification } = require('../services/EmailService');
 const {
   validateReportPayload,
   findPendingDuplicate,
@@ -95,6 +96,34 @@ class SubscriptionController {
       });
 
       const pendingPayment = await findPendingReportByTienda(db, tiendaId);
+
+      const [contextRows] = await db.query(
+        `SELECT t.nombre AS tiendaNombre,
+                pl.nombre AS planNombre,
+                u.nombre AS userName,
+                u.email AS userEmail
+         FROM tiendas t
+         JOIN planes pl ON pl.id = ?
+         JOIN usuarios u ON u.id = ?
+         WHERE t.id = ?
+         LIMIT 1`,
+        [data.planId, req.user.id, tiendaId]
+      );
+      const ctx = contextRows[0] || {};
+
+      sendPaymentReportNotification({
+        reportId,
+        storeName: ctx.tiendaNombre,
+        userName: ctx.userName,
+        userEmail: ctx.userEmail,
+        planLabel: req.body.plan || ctx.planNombre,
+        metodoPago: req.body.metodoPago,
+        referencia: data.referencia,
+        montoUsd: data.montoUsd,
+        bancoEmisor: data.bancoEmisor,
+      }).catch((emailErr) => {
+        console.error('[haru Email] Error al notificar reporte de pago:', emailErr.message);
+      });
 
       res.status(201).json({
         success: true,
