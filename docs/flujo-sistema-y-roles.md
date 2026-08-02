@@ -116,7 +116,12 @@ flowchart LR
   C -->|Aprueba| D[suscripcion ACTIVA +30 días]
   C -->|Rechaza| E[reporte RECHAZADO]
   D --> F[Features del plan habilitadas]
+  G[proximo_pago vencido] --> H{Reporte pendiente?}
+  H -->|Sí| I[Gracia: sigue PRUEBA/ACTIVA]
+  H -->|No| J[SUSPENDIDA automática]
 ```
+
+**Suspensión automática:** al iniciar sesión, en `/auth/me`, `/suscripciones/mi-plan` y en cada petición protegida del POS, si `proximo_pago < hoy` y no hay reporte `PENDIENTE`, la suscripción pasa a `SUSPENDIDA`. El frontend re-sincroniza cada 5 min y al volver a la pestaña.
 
 **Planes:**
 

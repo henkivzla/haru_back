@@ -1,8 +1,8 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const env = require('../../config/env');
+const db = require('../../config/db');
 const UserModel = require('../models/UserModel');
-const { buildAuthPayload } = require('./authPayload');
+const { issueAuthToken } = require('./authPayload');
+const { refreshSubscriptionForStore } = require('../services/subscriptionLifecycleService');
 
 class AuthController {
   async login(req, res, next) {
@@ -32,12 +32,10 @@ class AuthController {
 
       await UserModel.updateLastLogin(user.id);
 
-      const subscription = await UserModel.findSubscriptionByTiendaId(user.tienda_id);
-      const { tokenPayload, userResponse } = buildAuthPayload(user, subscription);
-
-      const token = jwt.sign(tokenPayload, env.JWT_SECRET, {
-        expiresIn: env.JWT_EXPIRES_IN || '8h'
-      });
+      const subscription = user.rol === 'SUPERADMIN'
+        ? null
+        : await refreshSubscriptionForStore(db, user.tienda_id);
+      const { token, user: userResponse } = issueAuthToken(user, subscription);
 
       return res.json({
         success: true,
@@ -57,10 +55,12 @@ class AuthController {
         return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
       }
 
-      const subscription = await UserModel.findSubscriptionByTiendaId(user.tienda_id);
-      const { userResponse } = buildAuthPayload(user, subscription);
+      const subscription = user.rol === 'SUPERADMIN'
+        ? null
+        : await refreshSubscriptionForStore(db, user.tienda_id);
+      const { token, user: userResponse } = issueAuthToken(user, subscription);
 
-      return res.json({ success: true, user: userResponse });
+      return res.json({ success: true, user: userResponse, token });
     } catch (error) {
       next(error);
     }
