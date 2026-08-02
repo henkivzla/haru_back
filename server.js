@@ -1,9 +1,21 @@
+const os = require('os');
 const app = require('./app');
 const env = require('./config/env');
 const db = require('./config/db');
 const { verifyMailConfig, isMailConfigured } = require('./src/services/EmailService');
 
 const PORT = env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
+
+function getLocalIpv4() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) return net.address;
+    }
+  }
+  return 'localhost';
+}
 
 async function checkDatabase() {
   try {
@@ -27,13 +39,17 @@ async function checkDatabase() {
   }
 }
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, HOST, () => {
   const mode = env.NODE_ENV || 'development';
+  const lanIp = getLocalIpv4();
   console.log(`=================================================`);
   console.log(`🚀 lilit Backend API — puerto ${PORT} (${mode})`);
   console.log(`🇻🇪 Listo para Venezuela / cPanel Passenger`);
   console.log(`=================================================`);
   console.log(`→ http://localhost:${PORT}`);
+  if (lanIp !== 'localhost') {
+    console.log(`→ Red local: http://${lanIp}:${PORT}`);
+  }
   console.log(`→ Health: http://localhost:${PORT}/health`);
   if (mode !== 'production') {
     console.log(`→ Modo dev: logs de cada petición abajo. Usa npm run dev para auto-reinicio.`);
