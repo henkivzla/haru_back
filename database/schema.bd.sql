@@ -1,10 +1,7 @@
 ﻿-- ============================================================================
--- LILIT POS VENEZUELA — SCHEMA NORMALIZADO v2.2
--- Autor: @henkivzla
--- Incluye: Binance en reportes_pago, RIF opcional, gastos, sucursales, soft delete
--- IMPORTANTE: Este script BORRA la base de datos existente y la recrea desde cero.
--- Importar en phpMyAdmin: pestaña Importar → database/schema.sql
--- ⚠️  Perderás usuarios registrados manualmente. Solo demo queda en seed.
+-- LILIT POS VENEZUELA — SCHEMA COMPLETO v2.2 (schema.bd.sql)
+-- Importar este archivo en phpMyAdmin → Importar
+-- ⚠️  BORRA lilit_db y la recrea. Usuarios registrados se pierden (quedan demo).
 -- ============================================================================
 
 DROP DATABASE IF EXISTS lilit_db;
