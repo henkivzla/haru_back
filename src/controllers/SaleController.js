@@ -7,22 +7,13 @@ class SaleController {
     try {
       const { clienteNombre, clienteRif, montoUsd, tasaBcv = 36.50, metodoPago, items = [] } = req.body;
 
-      const tiendaId = req.user?.tiendaId || 1;
       const activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
+      const cajaId = req.body.cajaId || activeCaja?.id || null;
 
-      let cajaId = req.body.cajaId || activeCaja?.id || null;
       if (!cajaId) {
-        cajaId = await CashRegisterModel.open({
-          tiendaId,
-          usuarioId: req.user.id,
-          montoUsd: 0,
-          montoBs: 0,
-          desgloseUsd: {},
-          desgloseBs: {},
-          zelle: 0,
-          pagoMovil: 0,
-          pos: 0,
-          tasaBcv
+        return res.status(400).json({
+          success: false,
+          error: 'Primero abre la caja del día para registrar ventas.',
         });
       }
 
