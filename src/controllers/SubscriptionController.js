@@ -2,6 +2,7 @@ const db = require('../../config/db');
 const UserModel = require('../models/UserModel');
 const { issueAuthToken } = require('./authPayload');
 const { sendPaymentReportNotification } = require('../services/EmailService');
+const { sendPaymentReportWhatsApp } = require('../services/WhatsAppService');
 const {
   validateReportPayload,
   findPendingDuplicate,
@@ -26,10 +27,10 @@ class SubscriptionController {
       const subscription = tiendaId
         ? await refreshSubscriptionForStore(db, tiendaId)
         : null;
-      const { token, user: planData } = issueAuthToken(user, subscription);
       const pendingPayment = tiendaId
         ? await findPendingReportByTienda(db, tiendaId)
         : null;
+      const { token, user: planData } = issueAuthToken(user, subscription, { pendingPayment });
 
       res.json({
         success: true,
@@ -123,6 +124,18 @@ class SubscriptionController {
         bancoEmisor: data.bancoEmisor,
       }).catch((emailErr) => {
         console.error('[haru Email] Error al notificar reporte de pago:', emailErr.message);
+      });
+
+      sendPaymentReportWhatsApp({
+        reportId,
+        storeName: ctx.tiendaNombre,
+        userName: ctx.userName,
+        planLabel: req.body.plan || ctx.planNombre,
+        metodoPago: req.body.metodoPago,
+        referencia: data.referencia,
+        montoUsd: data.montoUsd,
+      }).catch((waErr) => {
+        console.error('[haru WhatsApp] Error al notificar reporte de pago:', waErr.message);
       });
 
       res.status(201).json({

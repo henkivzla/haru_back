@@ -18,7 +18,7 @@ function escapeHtml(value) {
 function buildPasswordResetHtml({ userName, resetUrl }) {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0f172a;">
-      <h2 style="color: #2563EB; margin-bottom: 8px;">Haru POS</h2>
+      <h2 style="color: #2563EB; margin-bottom: 8px;">Haru</h2>
       <p>Hola ${escapeHtml(userName || 'usuario')},</p>
       <p>Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón:</p>
       <p style="margin: 24px 0;">
@@ -64,7 +64,7 @@ function buildPaymentReportHtml({
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
-      <h2 style="color: #2563EB; margin-bottom: 8px;">Haru POS</h2>
+      <h2 style="color: #2563EB; margin-bottom: 8px;">Haru</h2>
       <p>Nuevo reporte de pago <strong>#${escapeHtml(reportId)}</strong> pendiente de validación.</p>
       <table style="width:100%;border-collapse:collapse;margin:20px 0;background:#f8fafc;border-radius:8px;overflow:hidden;">
         ${tableRows}
@@ -74,7 +74,7 @@ function buildPaymentReportHtml({
           Revisar en panel admin
         </a>
       </p>
-      <p style="color:#64748B;font-size:13px;">Recibiste este correo porque eres el administrador de pagos de Haru POS.</p>
+      <p style="color:#64748B;font-size:13px;">Recibiste este correo porque eres el administrador de pagos de Haru.</p>
     </div>
   `;
 }
@@ -122,7 +122,7 @@ async function deliverEmail({ to, subject, html, devLabel }) {
 }
 
 async function sendPasswordResetEmail({ to, userName, resetUrl }) {
-  const subject = 'Restablece tu contraseña — Haru POS';
+  const subject = 'Restablece tu contraseña — Haru';
   const html = buildPasswordResetHtml({ userName, resetUrl });
   return deliverEmail({ to, subject, html, devLabel: 'Recuperación de contraseña' });
 }
@@ -144,7 +144,7 @@ async function sendPaymentReportNotification({
     return { sent: false, devMode: true, provider: 'none' };
   }
 
-  const subject = `[Haru POS] Nuevo pago reportado — ${storeName || 'Comercio'} ($${montoUsd})`;
+  const subject = `[Haru] Nuevo pago reportado — ${storeName || 'Comercio'} ($${montoUsd})`;
   const html = buildPaymentReportHtml({
     reportId,
     storeName,

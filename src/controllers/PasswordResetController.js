@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const UserModel = require('../models/UserModel');
 const PasswordResetModel = require('../models/PasswordResetModel');
 const { sendPasswordResetEmail, isMailConfigured } = require('../services/EmailService');
+const { resolveFrontendUrl } = require('../utils/resolveFrontendUrl');
 
 const GENERIC_MESSAGE =
   'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.';
@@ -19,7 +20,7 @@ class PasswordResetController {
 
       if (user) {
         const rawToken = await PasswordResetModel.createToken(user.id, 60);
-        const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+        const frontendUrl = resolveFrontendUrl(req);
         const resetUrl = `${frontendUrl}/restablecer-contrasena?token=${rawToken}`;
 
         try {

@@ -1,9 +1,11 @@
 const UserModel = require('../models/UserModel');
 
 /**
- * Suspende PRUEBA/ACTIVA cuando proximo_pago venció y no hay reporte PENDIENTE.
- * Grace period mientras el admin revisa un comprobante enviado.
+ * Suspende PRUEBA/ACTIVA cuando proximo_pago + GRACE_DAYS venció.
+ * Tras la gracia el usuario puede iniciar sesión pero solo reportar pago.
  */
+const { SUBSCRIPTION_GRACE_DAYS } = require('../constants/subscriptionPolicy');
+
 async function enforceSubscriptionExpiry(db, tiendaId) {
   if (!tiendaId) {
     return { changed: false, suspended: false, gracePendingPayment: false };
@@ -15,14 +17,8 @@ async function enforceSubscriptionExpiry(db, tiendaId) {
      WHERE s.tienda_id = ?
        AND s.deleted_at IS NULL
        AND s.estado IN ('PRUEBA', 'ACTIVA')
-       AND s.proximo_pago < CURDATE()
-       AND NOT EXISTS (
-         SELECT 1 FROM reportes_pago rp
-         WHERE rp.tienda_id = s.tienda_id
-           AND rp.estado = 'PENDIENTE'
-           AND rp.deleted_at IS NULL
-       )`,
-    [tiendaId]
+       AND s.proximo_pago < DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+    [tiendaId, SUBSCRIPTION_GRACE_DAYS]
   );
 
   const changed = (result.affectedRows || 0) > 0;
