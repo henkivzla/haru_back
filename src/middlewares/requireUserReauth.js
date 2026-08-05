@@ -6,7 +6,7 @@ function requireUserReauth(req, res, next) {
   if (!token) {
     return res.status(403).json({
       success: false,
-      error: 'Confirma con tu contraseña para cerrar la caja',
+      error: 'Confirma con tu contraseña para continuar',
       requiresUserPassword: true,
     });
   }

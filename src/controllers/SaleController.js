@@ -47,6 +47,82 @@ class SaleController {
     }
   }
 
+  async listVentasTurno(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId;
+      if (!tiendaId) {
+        return res.status(400).json({ success: false, error: 'Tienda no identificada.' });
+      }
+
+      const activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
+      const soloAnuladas = String(req.query.estado || 'activas').toLowerCase() === 'anuladas';
+      let ventas = [];
+      let scope = 'hoy';
+
+      if (activeCaja?.id) {
+        ventas = await SaleModel.listByCaja(activeCaja.id, tiendaId, { anulada: soloAnuladas ? 1 : 0 });
+        scope = 'turno';
+      } else {
+        ventas = await SaleModel.listTodayByTienda(tiendaId, { anulada: soloAnuladas ? 1 : 0 });
+      }
+
+      const totalUsd = ventas.reduce((acc, v) => acc + Number(v.montoUsd || 0), 0);
+
+      return res.json({
+        success: true,
+        data: ventas,
+        resumen: {
+          cantidad: ventas.length,
+          totalUsd,
+        },
+        cajaAbierta: Boolean(activeCaja?.id),
+        scope,
+        estado: soloAnuladas ? 'anuladas' : 'activas',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async annulVenta(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId;
+      const ventaId = parseInt(req.params.id, 10);
+
+      if (!tiendaId) {
+        return res.status(400).json({ success: false, error: 'Tienda no identificada.' });
+      }
+      if (!ventaId) {
+        return res.status(400).json({ success: false, error: 'Venta no válida.' });
+      }
+
+      const activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
+      if (!activeCaja?.id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Abre la caja para anular ventas del turno actual.',
+        });
+      }
+
+      await SaleModel.annulVenta({
+        ventaId,
+        tiendaId,
+        usuarioId: req.user.id,
+        cajaId: activeCaja.id,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Venta anulada correctamente.',
+      });
+    } catch (error) {
+      if (error.status) {
+        return res.status(error.status).json({ success: false, error: error.message });
+      }
+      next(error);
+    }
+  }
+
   async simulateCashea(req, res, next) {
     try {
       const { totalUsd = 120, tasaBcv = 36.50 } = req.query;

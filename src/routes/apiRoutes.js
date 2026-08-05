@@ -51,6 +51,8 @@ router.post('/caja/abrir', verifyToken, checkSubscriptionActive, checkFeature('c
 router.post('/caja/cerrar', verifyToken, checkSubscriptionActive, checkFeature('caja'), requireUserReauth, (req, res, next) => CashRegisterController.closeCaja(req, res, next));
 
 // VENTAS
+router.get('/ventas/turno', verifyToken, checkSubscriptionActive, checkFeature('pos'), (req, res, next) => SaleController.listVentasTurno(req, res, next));
+router.post('/ventas/:id/anular', verifyToken, checkSubscriptionActive, checkFeature('pos'), requireUserReauth, (req, res, next) => SaleController.annulVenta(req, res, next));
 router.post('/ventas/crear', verifyToken, checkSubscriptionActive, checkFeature('pos'), (req, res, next) => SaleController.processSale(req, res, next));
 
 // CUENTAS POR PAGAR
