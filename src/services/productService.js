@@ -1,5 +1,6 @@
 const db = require('../../config/db');
 const { normalizeCodigoRef } = require('../utils/productCode');
+const { resolvePriceFromRequest } = require('./priceConversionService');
 
 async function resolveCategoriaId(tiendaId, categoriaNombre) {
   const normalizedCategoria = (categoriaNombre || 'General').trim();
@@ -39,6 +40,8 @@ async function insertProduct({
   codigo,
   categoria,
   precioUsd,
+  monedaEntrada,
+  precioEntrada,
   stock,
   minStock,
   codigoSuffixFallback,
@@ -47,10 +50,7 @@ async function insertProduct({
     throw new Error('El nombre del producto es requerido');
   }
 
-  const parsedPrecio = Number(precioUsd);
-  if (!Number.isFinite(parsedPrecio) || parsedPrecio < 0) {
-    throw new Error('El precio USD debe ser un número válido');
-  }
+  const price = await resolvePriceFromRequest({ monedaEntrada, precioEntrada, precioUsd });
 
   const codigoRef = normalizeCodigoRef(codigo, codigoSuffixFallback || Date.now());
   if (await codigoExists(tiendaId, codigoRef)) {
@@ -62,14 +62,25 @@ async function insertProduct({
   const minStockVal = Number.isFinite(Number(minStock)) ? parseInt(minStock, 10) : 5;
 
   const [result] = await db.query(
-    `INSERT INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo, creado_por_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO productos (
+       tienda_id, categoria_id, codigo_ref, nombre,
+       precio_usd, moneda_entrada, precio_entrada,
+       tasa_bcv_snapshot, tasa_eur_snapshot,
+       precio_bs_snapshot, precio_eur_snapshot, precio_registrado_at,
+       stock, stock_minimo, creado_por_id
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`,
     [
       tiendaId,
       categoriaId,
       codigoRef,
       nombre.trim(),
-      parsedPrecio,
+      price.precioUsd,
+      price.monedaEntrada,
+      price.precioEntrada,
+      price.tasaBcvSnapshot,
+      price.tasaEurSnapshot,
+      price.precioBsSnapshot,
+      price.precioEurSnapshot,
       Math.max(0, stockVal),
       Math.max(0, minStockVal),
       creadoPorId || null,
@@ -79,8 +90,13 @@ async function insertProduct({
   return { id: result.insertId, codigo: codigoRef };
 }
 
+async function resolveProductPriceUpdate(body) {
+  return resolvePriceFromRequest(body);
+}
+
 module.exports = {
   resolveCategoriaId,
   insertProduct,
   codigoExists,
+  resolveProductPriceUpdate,
 };

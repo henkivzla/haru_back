@@ -1,6 +1,6 @@
 const db = require('../../config/db');
 const { normalizeCodigoRef } = require('../utils/productCode');
-const { insertProduct } = require('../services/productService');
+const { insertProduct, resolveProductPriceUpdate } = require('../services/productService');
 const { saveProductImage, deleteStoredImage, cleanupTempFile } = require('../services/productImageService');
 const { resolveMediaUrl } = require('../../config/uploads');
 
@@ -20,6 +20,13 @@ const PRODUCT_SELECT = `
   p.nombre,
   COALESCE(cp.nombre, 'General') AS categoria,
   p.precio_usd AS precioUsd,
+  p.moneda_entrada AS monedaEntrada,
+  p.precio_entrada AS precioEntrada,
+  p.tasa_bcv_snapshot AS tasaBcvSnapshot,
+  p.tasa_eur_snapshot AS tasaEurSnapshot,
+  p.precio_bs_snapshot AS precioBsSnapshot,
+  p.precio_eur_snapshot AS precioEurSnapshot,
+  p.precio_registrado_at AS precioRegistradoAt,
   p.stock,
   p.stock_minimo AS minStock,
   p.descripcion,
@@ -268,7 +275,7 @@ class AdminController {
   static async createProduct(req, res, next) {
     try {
       const tiendaId = req.user?.tiendaId || 1;
-      const { codigo, nombre, categoria, precioUsd, stock, minStock } = req.body;
+      const { codigo, nombre, categoria, precioUsd, monedaEntrada, precioEntrada, stock, minStock } = req.body;
 
       const result = await insertProduct({
         tiendaId,
@@ -277,6 +284,8 @@ class AdminController {
         codigo,
         categoria,
         precioUsd,
+        monedaEntrada,
+        precioEntrada,
         stock,
         minStock,
       });
@@ -327,6 +336,8 @@ class AdminController {
             codigo: row.codigo,
             categoria: row.categoria,
             precioUsd: row.precioUsd,
+            monedaEntrada: row.monedaEntrada || 'USD',
+            precioEntrada: row.precioEntrada ?? row.precioUsd,
             stock: row.stock,
             minStock: row.minStock,
             codigoSuffixFallback: `${Date.now()}${i}`,
@@ -365,7 +376,7 @@ class AdminController {
     try {
       const tiendaId = req.user?.tiendaId || 1;
       const id = parseInt(req.params.id, 10);
-      const { nombre, codigo, categoria, precioUsd, stock, minStock } = req.body;
+      const { nombre, codigo, categoria, precioUsd, monedaEntrada, precioEntrada, stock, minStock } = req.body;
 
       if (!id) {
         return res.status(400).json({ success: false, error: 'ID inválido' });
@@ -409,19 +420,31 @@ class AdminController {
         categoriaId = insertCat.insertId;
       }
 
+      const price = await resolveProductPriceUpdate({ precioUsd, monedaEntrada, precioEntrada });
+
       await db.query(
         `UPDATE productos
-         SET nombre = ?, codigo_ref = ?, categoria_id = ?, precio_usd = ?, stock = ?, stock_minimo = ?
+         SET nombre = ?, codigo_ref = ?, categoria_id = ?,
+             precio_usd = ?, moneda_entrada = ?, precio_entrada = ?,
+             tasa_bcv_snapshot = ?, tasa_eur_snapshot = ?,
+             precio_bs_snapshot = ?, precio_eur_snapshot = ?, precio_registrado_at = NOW(),
+             stock = ?, stock_minimo = ?
          WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
         [
           nombre.trim(),
           codigoRef,
           categoriaId,
-          precioUsd,
+          price.precioUsd,
+          price.monedaEntrada,
+          price.precioEntrada,
+          price.tasaBcvSnapshot,
+          price.tasaEurSnapshot,
+          price.precioBsSnapshot,
+          price.precioEurSnapshot,
           stock ?? 0,
           minStock ?? 5,
           id,
-          tiendaId
+          tiendaId,
         ]
       );
 
