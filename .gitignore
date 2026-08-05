@@ -5,6 +5,10 @@ node_modules/
 .env
 .env.*
 !.env.example
+!.env.production.example
+
+# Internal docs (local only — see docs/README.md)
+docs/
 
 # Logs
 *.log
