@@ -23,9 +23,9 @@ function isMailConfigured() {
 
 function getFromAddress() {
   if (MAIL_PROVIDER === 'resend' && isResendConfigured()) {
-    return process.env.RESEND_FROM || 'Haru POS <onboarding@resend.dev>';
+    return process.env.RESEND_FROM || 'Haru <onboarding@resend.dev>';
   }
-  return process.env.SMTP_FROM || 'Haru POS <noreply@haru.ve>';
+  return process.env.SMTP_FROM || 'Haru <noreply@haru.ve>';
 }
 
 function getMailProfileLabel() {

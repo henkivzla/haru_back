@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const env = require('./config/env');
+const { getCorsOptions } = require('./config/cors');
 const { getUploadsRoot, ensureUploadDirs } = require('./config/uploads');
 const apiRoutes = require('./src/routes/apiRoutes');
 const errorHandler = require('./src/middlewares/errorHandler');
@@ -15,7 +16,7 @@ const app = express();
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors(getCorsOptions(env.NODE_ENV)));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -30,7 +31,7 @@ if (env.NODE_ENV !== 'production') {
 
 // RUTA DE HEALTHCHECK
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Haru POS Venezuela API funcionando correctamente', timestamp: new Date() });
+  res.json({ status: 'OK', message: 'Haru Venezuela API funcionando correctamente', timestamp: new Date() });
 });
 
 // RUTAS API
