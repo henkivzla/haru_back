@@ -91,7 +91,7 @@ class AuthController {
         return res.status(400).json({ success: false, error: 'La contraseña es requerida' });
       }
 
-      const user = await UserModel.findById(req.user.id);
+      const user = await UserModel.findByIdWithPassword(req.user.id);
       if (!user?.password_hash) {
         return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
       }
@@ -112,6 +112,40 @@ class AuthController {
         reauthToken,
         expiresIn: 300,
         message: 'Acción confirmada'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyUserAction(req, res, next) {
+    try {
+      const { password } = req.body;
+      if (!password) {
+        return res.status(400).json({ success: false, error: 'La contraseña es requerida' });
+      }
+
+      const user = await UserModel.findByIdWithPassword(req.user.id);
+      if (!user?.password_hash) {
+        return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+      }
+
+      const valid = await bcrypt.compare(password, user.password_hash);
+      if (!valid) {
+        return res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
+      }
+
+      const reauthToken = jwt.sign(
+        { sub: user.id, purpose: 'user_action' },
+        env.JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+
+      return res.json({
+        success: true,
+        reauthToken,
+        expiresIn: 300,
+        message: 'Acción confirmada',
       });
     } catch (error) {
       next(error);

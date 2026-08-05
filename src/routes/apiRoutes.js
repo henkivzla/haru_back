@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { verifyToken, checkRole, checkFeature, checkSubscriptionActive } = require('../middlewares/authMiddleware');
 const requireAdminReauth = require('../middlewares/requireAdminReauth');
+const requireUserReauth = require('../middlewares/requireUserReauth');
 const AuthController = require('../controllers/AuthController');
 const CashRegisterController = require('../controllers/CashRegisterController');
 const SaleController = require('../controllers/SaleController');
@@ -34,6 +35,7 @@ router.patch('/tienda/apariencia', verifyToken, storeAdmin, (req, res, next) => 
 router.patch('/auth/apariencia', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AppearanceController.updatePersonalAppearance(req, res, next));
 router.patch('/auth/password', verifyToken, (req, res, next) => AuthController.changePassword(req, res, next));
 router.post('/auth/verify-admin-action', verifyToken, adminOnly, (req, res, next) => AuthController.verifyAdminAction(req, res, next));
+router.post('/auth/verify-user-action', verifyToken, (req, res, next) => AuthController.verifyUserAction(req, res, next));
 router.post('/auth/forgot-password', (req, res, next) => PasswordResetController.forgotPassword(req, res, next));
 router.post('/auth/reset-password', (req, res, next) => PasswordResetController.resetPassword(req, res, next));
 
@@ -42,8 +44,11 @@ router.get('/bcv/tasa', (req, res, next) => BcvRateController.getRate(req, res, 
 
 // CAJA REGISTRADORA
 router.get('/caja/estado', verifyToken, checkSubscriptionActive, checkFeature('caja'), (req, res, next) => CashRegisterController.getStatus(req, res, next));
+router.get('/caja/resumen-activa', verifyToken, checkSubscriptionActive, checkFeature('caja'), (req, res, next) => CashRegisterController.getResumenActiva(req, res, next));
+router.get('/caja/historial', verifyToken, checkSubscriptionActive, checkFeature('caja'), (req, res, next) => CashRegisterController.listHistorial(req, res, next));
+router.get('/caja/historial/:id', verifyToken, checkSubscriptionActive, checkFeature('caja'), (req, res, next) => CashRegisterController.getHistorialDetalle(req, res, next));
 router.post('/caja/abrir', verifyToken, checkSubscriptionActive, checkFeature('caja'), (req, res, next) => CashRegisterController.openCaja(req, res, next));
-router.post('/caja/cerrar', verifyToken, checkSubscriptionActive, checkFeature('caja'), (req, res, next) => CashRegisterController.closeCaja(req, res, next));
+router.post('/caja/cerrar', verifyToken, checkSubscriptionActive, checkFeature('caja'), requireUserReauth, (req, res, next) => CashRegisterController.closeCaja(req, res, next));
 
 // VENTAS
 router.post('/ventas/crear', verifyToken, checkSubscriptionActive, checkFeature('pos'), (req, res, next) => SaleController.processSale(req, res, next));
