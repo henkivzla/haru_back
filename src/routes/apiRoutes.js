@@ -32,6 +32,7 @@ router.get('/auth/me', verifyToken, (req, res, next) => AuthController.getProfil
 router.get('/apariencia', verifyToken, (req, res, next) => AppearanceController.getAppearance(req, res, next));
 router.patch('/tienda/apariencia', verifyToken, storeAdmin, (req, res, next) => AppearanceController.updateStoreAppearance(req, res, next));
 router.patch('/auth/apariencia', verifyToken, checkRole(['SUPERADMIN']), (req, res, next) => AppearanceController.updatePersonalAppearance(req, res, next));
+router.patch('/auth/password', verifyToken, (req, res, next) => AuthController.changePassword(req, res, next));
 router.post('/auth/verify-admin-action', verifyToken, adminOnly, (req, res, next) => AuthController.verifyAdminAction(req, res, next));
 router.post('/auth/forgot-password', (req, res, next) => PasswordResetController.forgotPassword(req, res, next));
 router.post('/auth/reset-password', (req, res, next) => PasswordResetController.resetPassword(req, res, next));

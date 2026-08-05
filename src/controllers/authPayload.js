@@ -2,8 +2,9 @@ const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
 const { resolveFeatures } = require('../config/planFeatures');
 const { resolveAppearance } = require('../constants/accentPalette');
+const { computeSubscriptionReminder } = require('../services/subscriptionReminderService');
 
-function buildAuthPayload(user, subscription) {
+function buildAuthPayload(user, subscription, extras = {}) {
   if (!user) {
     throw new Error('Usuario no encontrado');
   }
@@ -23,6 +24,16 @@ function buildAuthPayload(user, subscription) {
 
   const appearance = resolveAppearance(user);
   const canCustomizeAppearance = isSuperAdmin || role === 'ADMIN';
+  const pendingPayment = extras.pendingPayment ?? null;
+
+  const subscriptionReminder = !isSuperAdmin && subscription
+    ? computeSubscriptionReminder({
+        proximoPago: subscription.proximoPago,
+        subscriptionEstado: subscription.estado,
+        subscriptionActive,
+        pendingPayment,
+      })
+    : null;
 
   return {
     tokenPayload: {
@@ -49,13 +60,18 @@ function buildAuthPayload(user, subscription) {
       features,
       subscriptionActive,
       appearance,
-      canCustomizeAppearance
+      canCustomizeAppearance,
+      pendingPayment,
+      subscriptionReminder,
+      ultimoLogin: user.ultimo_login || null,
+      createdAt: user.created_at || null,
+      accountEstado: user.estado || 'ACTIVO',
     }
   };
 }
 
-function issueAuthToken(user, subscription) {
-  const { tokenPayload, userResponse } = buildAuthPayload(user, subscription);
+function issueAuthToken(user, subscription, extras = {}) {
+  const { tokenPayload, userResponse } = buildAuthPayload(user, subscription, extras);
   const token = jwt.sign(tokenPayload, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN || '8h'
   });

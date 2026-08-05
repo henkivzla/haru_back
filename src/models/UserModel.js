@@ -56,6 +56,18 @@ class UserModel {
     return rows[0] || null;
   }
 
+  static async findByIdWithPassword(id) {
+    const [rows] = await db.execute(
+      `SELECT ${USER_SELECT}, u.password_hash
+       FROM usuarios u
+       JOIN roles r ON r.id = u.rol_id
+       LEFT JOIN tiendas t ON t.id = u.tienda_id
+       WHERE u.id = ? AND u.deleted_at IS NULL`,
+      [id]
+    );
+    return rows[0] || null;
+  }
+
   static async findByIdForAdmin(id, includeDeleted = false) {
     const deletedClause = includeDeleted ? '' : 'AND u.deleted_at IS NULL';
     const [rows] = await db.execute(
