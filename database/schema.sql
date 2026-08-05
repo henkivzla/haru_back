@@ -1,12 +1,15 @@
 -- ============================================================================
--- HARU POS VENEZUELA — SCHEMA NORMALIZADO v2.6
+-- HARU VENEZUELA — SCHEMA NORMALIZADO v2.6
 -- Autor: @henkivzla
--- SUPERADMIN seed: Eiborth Gómez · gomezeiborth@gmail.com · +58 4129852460 · pass haru2026
+-- SUPERADMIN seed (pass haru2026):
+--   Eiborth Gómez · gomezeiborth@gmail.com · 4129852460
+--   Carla Borges · carlaborgesce@gmail.com · 4128066714
+--   Haru Henki · haru@henki.com.ve · 04228180393
 -- Incluye: clientes.apellido, Binance, gastos, sucursales, soft delete, productos.creado_por_id, apariencia tienda/usuario
 -- Usa SOLO este archivo para crear o resetear la BD (no migraciones sueltas).
 -- IMPORTANTE: Este script BORRA la base de datos existente y la recrea desde cero.
 -- Importar en phpMyAdmin: pestaña Importar → database/schema.sql
--- ⚠️  Perderás usuarios registrados manualmente. Solo demo queda en seed.
+-- ⚠️  Borra todo y deja solo catálogo + 3 super administradores iniciales.
 -- ============================================================================
 
 DROP DATABASE IF EXISTS haru_db;
@@ -31,7 +34,7 @@ CREATE TABLE IF NOT EXISTS roles (
 INSERT IGNORE INTO roles (id, nombre, descripcion) VALUES
   (1, 'SUPERADMIN', 'Dueno del sistema SaaS, acceso total'),
   (2, 'ADMIN',      'Gerente o dueno de un comercio cliente'),
-  (3, 'CAJERO',     'Operador de punto de venta');
+  (3, 'CAJERO',     'Operador de caja y ventas');
 
 -- ============================================================================
 -- 2. PLANES DE SUSCRIPCION
@@ -49,7 +52,7 @@ CREATE TABLE IF NOT EXISTS planes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Catalogo de planes SaaS';
 
 INSERT IGNORE INTO planes (id, slug, nombre, precio_mensual, max_usuarios, descripcion) VALUES
-  (1, 'economico', 'Plan Economico', 15.00, 1,   'POS - Inventario - Tasa BCV en tiempo real'),
+  (1, 'economico', 'Plan Economico', 15.00, 1,   'Ventas - Inventario - Tasa BCV en tiempo real'),
   (2, 'estandar',  'Plan Estandar',  18.00, 3,   'Todo Economico + Clientes - Cuentas por Pagar'),
   (3, 'pro',       'Plan Pro',       22.00, 999, 'Todo Estandar + Multi-sucursal - Reportes avanzados');
 
@@ -81,6 +84,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   rol_id        TINYINT UNSIGNED NOT NULL DEFAULT 2,
   nombre        VARCHAR(100)  NOT NULL,
   email         VARCHAR(150)  NOT NULL UNIQUE,
+  telefono      VARCHAR(30)   NULL,
   password_hash VARCHAR(255)  NOT NULL,
   theme_mode    ENUM('light','dark') NULL DEFAULT NULL,
   accent_key    VARCHAR(20)       NULL DEFAULT NULL,
@@ -393,49 +397,15 @@ CREATE TABLE IF NOT EXISTS sucursales (
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================================
--- SEED DATA — datos iniciales del sistema
+-- SEED DATA — catálogo del sistema + super administradores
+-- Contraseña inicial de todos: haru2026
 -- ============================================================================
 
--- Tiendas demo
-INSERT IGNORE INTO tiendas (id, nombre, rif, direccion, telefono) VALUES
-  (1, 'Comercio Demo Haru', 'J-12345678-0', 'Av. Francisco de Miranda, Caracas, VE', '+58 412 1234567'),
-  (2, 'Inversiones Haru Vzla', 'J-87654321-0', 'Centro Comercial, Valencia, VE', '+58 424 7654321');
-
--- Usuarios demo (password inicial SUPERADMIN y demos: haru2026)
-INSERT IGNORE INTO usuarios (id, tienda_id, rol_id, nombre, email, password_hash, estado) VALUES
-  (1, NULL, 1, 'Eiborth Gómez', 'gomezeiborth@gmail.com', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
-  (2, 2, 2, 'Carlos Mendoza (Gerente)', 'gerente@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
-  (3, 2, 3, 'María Gómez (Cajera)', 'cajero@tienda.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
-  (4, 1, 2, 'Diego Aponte', 'diego@negocio.ve', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO');
+INSERT IGNORE INTO usuarios (id, tienda_id, rol_id, nombre, email, telefono, password_hash, estado) VALUES
+  (1, NULL, 1, 'Eiborth Gómez', 'gomezeiborth@gmail.com', '4129852460', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
+  (2, NULL, 1, 'Carla Borges', 'carlaborgesce@gmail.com', '4128066714', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
+  (3, NULL, 1, 'Haru Henki', 'haru@henki.com.ve', '04228180393', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO');
 
 -- Tasa BCV inicial
 INSERT IGNORE INTO tasas_bcv (tasa, fuente) VALUES
   (746.6300, 'bcv.org.ve');
-
--- Suscripciones demo
-INSERT IGNORE INTO suscripciones (id, tienda_id, plan_id, ciclo, estado, fecha_inicio, proximo_pago) VALUES
-  (1, 1, 3, 'MENSUAL', 'ACTIVA', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY)),
-  (2, 2, 2, 'MENSUAL', 'ACTIVA', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY));
-
--- Categorias demo
-INSERT IGNORE INTO categorias_producto (id, tienda_id, nombre, color_hex) VALUES
-  (1, 1, 'Licores',    '#8B5CF6'),
-  (2, 1, 'Viveres',    '#10B981'),
-  (3, 1, 'Calzado',    '#F59E0B'),
-  (4, 1, 'Tecnologia', '#06B6D4'),
-  (5, 2, 'Viveres',    '#10B981');
-
--- Proveedor demo
-INSERT IGNORE INTO proveedores (id, tienda_id, nombre, rif, telefono) VALUES
-  (1, 1, 'Distribuidora Nacional C.A.', 'J-98765432-1', '+58 212 5551234');
-
--- Productos demo
-INSERT IGNORE INTO productos (tienda_id, categoria_id, codigo_ref, nombre, precio_usd, stock, stock_minimo, creado_por_id) VALUES
-  (1, 2, 'COD-VIV-001', 'Harina P.A.N. Bulto 20kg', 19.00, 18, 5, 4),
-  (1, 1, 'COD-LIC-001', 'Ron Santa Teresa Gran Reserva 0.75L', 14.50, 0, 5, 4),
-  (2, 5, 'COD-VIV-001', 'Harina P.A.N. Bulto 20kg', 19.00, 10, 5, 2);
-
--- Cuentas por pagar demo (tienda 1)
-INSERT IGNORE INTO cuentas_pagar (id, tienda_id, proveedor_id, descripcion, monto_usd, tasa_origen, fecha_vencimiento, estado) VALUES
-  (1, 1, 1, 'Factura licores marzo', 450.00, 746.6300, DATE_ADD(CURDATE(), INTERVAL 15 DAY), 'PENDIENTE'),
-  (2, 1, 1, 'Mercancía viveres', 280.50, 720.0000, DATE_SUB(CURDATE(), INTERVAL 3 DAY), 'VENCIDA');

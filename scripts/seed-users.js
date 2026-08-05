@@ -1,5 +1,5 @@
 /**
- * Resetea contraseñas de usuarios demo a: haru2026
+ * Resetea contraseñas de super administradores a: haru2026
  * Ejecutar: node scripts/seed-users.js
  */
 require('dotenv').config();
@@ -7,25 +7,24 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 
 const DEMO_PASSWORD = 'haru2026';
-const DEMO_EMAILS = [
+const SUPERADMIN_EMAILS = [
   'gomezeiborth@gmail.com',
-  'gerente@tienda.ve',
-  'cajero@tienda.ve',
-  'diego@negocio.ve'
+  'carlaborgesce@gmail.com',
+  'haru@henki.com.ve'
 ];
 
 async function main() {
   const hash = bcrypt.hashSync(DEMO_PASSWORD, 10);
 
-  for (const email of DEMO_EMAILS) {
+  for (const email of SUPERADMIN_EMAILS) {
     const [result] = await db.query(
-      'UPDATE usuarios SET password_hash = ?, activo = 1 WHERE email = ?',
+      'UPDATE usuarios SET password_hash = ?, activo = 1, estado = \'ACTIVO\' WHERE email = ?',
       [hash, email]
     );
     console.log(`${email}: ${result.affectedRows ? 'actualizado' : 'no encontrado'}`);
   }
 
-  console.log('\nListo. Usa cualquier email demo con password: haru2026');
+  console.log('\nListo. Super admins con password: haru2026');
   process.exit(0);
 }
 
