@@ -1,7 +1,8 @@
 /**
  * Orígenes CORS permitidos.
  * Local: refleja el Origin del cliente.
- * Producción: CORS_ORIGIN + subdominios *.henki.com.ve (cPanel).
+ * cPanel DEV (haru-api-dev): origin true — evita mismatches http/https.
+ * PRO: CORS_ORIGIN + subdominios *.henki.com.ve.
  */
 function parseCorsOrigins(raw) {
   if (!raw || raw.trim() === '*') return null;
@@ -10,13 +11,22 @@ function parseCorsOrigins(raw) {
 }
 
 function isHenkiSubdomain(origin) {
-  return /^https:\/\/[\w-]+\.henki\.com\.ve$/i.test(origin || '');
+  return /^https?:\/\/[\w-]+\.henki\.com\.ve$/i.test(origin || '');
+}
+
+function isDevApiHost() {
+  const api = process.env.API_PUBLIC_URL || '';
+  return api.includes('haru-api-dev');
 }
 
 function getCorsOptions(nodeEnv = 'development') {
   const credentials = true;
 
   if (nodeEnv !== 'production') {
+    return { origin: true, credentials };
+  }
+
+  if (isDevApiHost()) {
     return { origin: true, credentials };
   }
 
@@ -27,10 +37,10 @@ function getCorsOptions(nodeEnv = 'development') {
       if (!origin) return callback(null, true);
       if (explicit?.includes(origin)) return callback(null, true);
       if (isHenkiSubdomain(origin)) return callback(null, true);
-      callback(new Error(`CORS bloqueado: ${origin}`));
+      callback(null, false);
     },
     credentials,
   };
 }
 
-module.exports = { getCorsOptions, parseCorsOrigins, isHenkiSubdomain };
+module.exports = { getCorsOptions, parseCorsOrigins, isHenkiSubdomain, isDevApiHost };
