@@ -1,6 +1,7 @@
 const db = require('../../config/db');
 const { normalizeCodigoRef } = require('../utils/productCode');
 const { insertProduct, resolveProductPriceUpdate } = require('../services/productService');
+const { assertCanAddProducts, getProductLimitInfo } = require('../services/planLimitService');
 const { resolveInversionFromRequest } = require('../services/priceConversionService');
 const { saveProductImage, deleteStoredImage, cleanupTempFile } = require('../services/productImageService');
 const { resolveMediaUrl } = require('../../config/uploads');
@@ -244,7 +245,8 @@ class AdminController {
          ORDER BY p.created_at DESC, p.id DESC`,
         [tiendaId]
       );
-      res.json({ success: true, data: products.map(mapProductRow) });
+      const limit = await getProductLimitInfo(tiendaId);
+      res.json({ success: true, data: products.map(mapProductRow), limit });
     } catch (err) {
       next(err);
     }
@@ -281,6 +283,8 @@ class AdminController {
       const tiendaId = req.user?.tiendaId || 1;
       const { codigo, nombre, categoria, precioUsd, monedaEntrada, precioEntrada, monedaInversion, inversionEntrada, stock, minStock } = req.body;
 
+      await assertCanAddProducts(tiendaId, 1);
+
       const result = await insertProduct({
         tiendaId,
         creadoPorId: req.user?.id,
@@ -298,6 +302,9 @@ class AdminController {
 
       res.status(201).json({ success: true, id: result.id, message: 'Producto creado' });
     } catch (err) {
+      if (err.code === 'PRODUCT_LIMIT' || err.statusCode === 403) {
+        return res.status(403).json({ success: false, error: err.message, code: err.code || 'PRODUCT_LIMIT' });
+      }
       if (err.message?.includes('Ya existe')) {
         return res.status(409).json({ success: false, error: err.message });
       }
@@ -324,12 +331,24 @@ class AdminController {
       const created = [];
       const errors = [];
       const usedCodes = new Set();
+      let limitReached = false;
 
       for (let i = 0; i < items.length; i++) {
         const row = items[i] || {};
         const rowLabel = row.rowNum || i + 1;
 
+        if (limitReached) {
+          errors.push({
+            row: rowLabel,
+            nombre: String(row.nombre || '').trim(),
+            error: 'Límite de productos del plan alcanzado',
+          });
+          continue;
+        }
+
         try {
+          await assertCanAddProducts(tiendaId, 1);
+
           const previewCodigo = normalizeCodigoRef(row.codigo, `${Date.now()}${i}`);
           if (usedCodes.has(previewCodigo)) {
             throw new Error(`Código duplicado en el archivo: ${previewCodigo}`);
@@ -359,6 +378,9 @@ class AdminController {
             nombre: String(row.nombre || '').trim(),
           });
         } catch (err) {
+          if (err.code === 'PRODUCT_LIMIT') {
+            limitReached = true;
+          }
           errors.push({
             row: rowLabel,
             nombre: String(row.nombre || '').trim(),

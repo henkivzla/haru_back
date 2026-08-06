@@ -149,7 +149,8 @@ class UserModel {
          p.slug AS planSlug,
          p.nombre AS planNombre,
          p.precio_mensual AS planMonto,
-         p.max_usuarios AS maxUsuarios
+         p.max_usuarios AS maxUsuarios,
+         p.max_productos AS maxProductos
        FROM suscripciones s
        JOIN planes p ON p.id = s.plan_id
        WHERE s.tienda_id = ? AND s.deleted_at IS NULL

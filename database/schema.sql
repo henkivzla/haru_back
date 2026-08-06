@@ -46,15 +46,16 @@ CREATE TABLE IF NOT EXISTS planes (
   nombre          VARCHAR(50)   NOT NULL,
   precio_mensual  DECIMAL(10,2) NOT NULL,
   max_usuarios    SMALLINT      NOT NULL DEFAULT 1,
+  max_productos   INT UNSIGNED  NULL DEFAULT NULL COMMENT 'NULL = ilimitado',
   descripcion     TEXT          NULL,
   activo          TINYINT(1)    NOT NULL DEFAULT 1,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Catalogo de planes SaaS';
 
-INSERT IGNORE INTO planes (id, slug, nombre, precio_mensual, max_usuarios, descripcion) VALUES
-  (1, 'economico', 'Plan Economico', 15.00, 1,   'Ventas - Inventario - Tasa BCV en tiempo real'),
-  (2, 'estandar',  'Plan Estandar',  18.00, 3,   'Todo Economico + Clientes - Cuentas por Pagar'),
-  (3, 'pro',       'Plan Pro',       22.00, 999, 'Todo Estandar + Multi-sucursal - Reportes avanzados');
+INSERT IGNORE INTO planes (id, slug, nombre, precio_mensual, max_usuarios, max_productos, descripcion) VALUES
+  (1, 'economico', 'Plan Economico', 15.00, 1,   75,   'Ventas - Inventario - Tasa BCV en tiempo real'),
+  (2, 'estandar',  'Plan Estandar',  18.00, 3,   300,  'Todo Economico + Clientes - Cuentas por Pagar'),
+  (3, 'pro',       'Plan Pro',       22.00, 999, NULL, 'Todo Estandar + Multi-sucursal - Reportes avanzados');
 
 -- ============================================================================
 -- 3. TIENDAS (comercios cliente del SaaS)

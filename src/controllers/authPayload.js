@@ -57,6 +57,9 @@ function buildAuthPayload(user, subscription, extras = {}) {
       subscriptionEstado: subscription?.estado || (isSuperAdmin ? 'ACTIVA' : 'PRUEBA'),
       proximoPago: subscription?.proximoPago || null,
       maxUsuarios: subscription?.maxUsuarios || (planSlug === 'pro' ? 999 : planSlug === 'estandar' ? 3 : 1),
+      maxProductos: isSuperAdmin
+        ? null
+        : (subscription?.maxProductos ?? (planSlug === 'pro' ? null : planSlug === 'estandar' ? 300 : 75)),
       features,
       subscriptionActive,
       appearance,
