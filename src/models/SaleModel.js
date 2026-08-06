@@ -2,6 +2,12 @@
 const { createClienteFromVenta } = require('../services/clienteVentaService');
 
 class SaleModel {
+  static parseProductoId(item = {}) {
+    const raw = item.productoId ?? item.producto_id ?? item.id ?? null;
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
   static async createVenta({
     cajaId,
     tiendaId,
@@ -30,21 +36,29 @@ class SaleModel {
 
       // Insertar líneas de detalle
       for (const item of items) {
-        const subtotal = (item.cantidad || 1) * (item.precioUsd || 0);
+        const productoId = SaleModel.parseProductoId(item);
+        const cantidad = Math.max(1, parseInt(item.cantidad || item.qty || 1, 10) || 1);
+        const subtotal = cantidad * (Number(item.precioUsd) || 0);
 
         await connection.execute(
           `INSERT INTO items_venta
            (venta_id, producto_id, nombre_producto, cantidad, precio_unitario_usd, subtotal_usd)
            VALUES (?, ?, ?, ?, ?, ?)`,
-          [ventaId, item.productoId || null, item.nombre || 'Producto', item.cantidad || 1, item.precioUsd || 0, subtotal]
+          [ventaId, productoId, item.nombre || 'Producto', cantidad, item.precioUsd || 0, subtotal]
         );
 
-        // Descontar stock si hay producto ligado
-        if (item.productoId) {
-          await connection.execute(
-            `UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE id = ? AND deleted_at IS NULL`,
-            [item.cantidad || 1, item.productoId]
+        if (productoId) {
+          const [updateResult] = await connection.execute(
+            `UPDATE productos
+             SET stock = GREATEST(0, stock - ?)
+             WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
+            [cantidad, productoId, tiendaId]
           );
+          if (updateResult.affectedRows === 0) {
+            const err = new Error(`No se pudo descontar stock de "${item.nombre || 'producto'}".`);
+            err.status = 409;
+            throw err;
+          }
         }
       }
 
@@ -191,8 +205,8 @@ class SaleModel {
         await connection.execute(
           `UPDATE productos
            SET stock = stock + ?
-           WHERE id = ? AND deleted_at IS NULL`,
-          [item.cantidad || 1, item.producto_id]
+           WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
+          [item.cantidad || 1, item.producto_id, tiendaId]
         );
       }
 

@@ -24,6 +24,13 @@ class SaleController {
 
       const montoBs = montoUsd * tasaBcv;
 
+      const normalizedItems = (Array.isArray(items) ? items : []).map((item) => ({
+        productoId: SaleModel.parseProductoId(item),
+        nombre: item?.nombre || 'Producto',
+        precioUsd: Number(item?.precioUsd ?? item?.precio_usd ?? 0),
+        cantidad: Math.max(1, parseInt(item?.cantidad ?? item?.qty ?? 1, 10) || 1),
+      }));
+
       const ventaId = await SaleModel.createVenta({
         cajaId,
         tiendaId,
@@ -32,7 +39,7 @@ class SaleController {
         montoBs,
         tasaBcv,
         metodoPago,
-        items
+        items: normalizedItems,
       });
 
       return res.status(201).json({

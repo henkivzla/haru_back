@@ -1,6 +1,6 @@
 const db = require('../../config/db');
 const { normalizeCodigoRef } = require('../utils/productCode');
-const { resolvePriceFromRequest } = require('./priceConversionService');
+const { resolvePriceFromRequest, resolveInversionFromRequest } = require('./priceConversionService');
 
 async function resolveCategoriaId(tiendaId, categoriaNombre) {
   const normalizedCategoria = (categoriaNombre || 'General').trim();
@@ -42,6 +42,8 @@ async function insertProduct({
   precioUsd,
   monedaEntrada,
   precioEntrada,
+  monedaInversion,
+  inversionEntrada,
   stock,
   minStock,
   codigoSuffixFallback,
@@ -51,6 +53,7 @@ async function insertProduct({
   }
 
   const price = await resolvePriceFromRequest({ monedaEntrada, precioEntrada, precioUsd });
+  const inversion = await resolveInversionFromRequest({ monedaInversion, inversionEntrada });
 
   const codigoRef = normalizeCodigoRef(codigo, codigoSuffixFallback || Date.now());
   if (await codigoExists(tiendaId, codigoRef)) {
@@ -67,8 +70,9 @@ async function insertProduct({
        precio_usd, moneda_entrada, precio_entrada,
        tasa_bcv_snapshot, tasa_eur_snapshot,
        precio_bs_snapshot, precio_eur_snapshot, precio_registrado_at,
+       moneda_inversion, inversion_entrada, inversion_usd,
        stock, stock_minimo, creado_por_id
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)`,
     [
       tiendaId,
       categoriaId,
@@ -81,6 +85,9 @@ async function insertProduct({
       price.tasaEurSnapshot,
       price.precioBsSnapshot,
       price.precioEurSnapshot,
+      inversion?.monedaInversion || null,
+      inversion?.inversionEntrada ?? null,
+      inversion?.inversionUsd ?? null,
       Math.max(0, stockVal),
       Math.max(0, minStockVal),
       creadoPorId || null,

@@ -104,8 +104,32 @@ async function resolvePriceFromRequest(body) {
   throw new Error('El precio es requerido');
 }
 
+async function resolveInversionFromRequest(body) {
+  const { monedaInversion, inversionEntrada } = body || {};
+  const amount = parseAmount(inversionEntrada);
+  if (amount == null || Number.isNaN(amount)) return null;
+  if (amount <= 0) {
+    throw new Error('La inversión debe ser mayor a 0');
+  }
+
+  const bcv = await BcvScraperService.fetchBcvRate();
+  const converted = convertPriceEntry({
+    monedaEntrada: monedaInversion || 'USD',
+    precioEntrada: amount,
+    tasaUsd: bcv.tasa,
+    tasaEur: bcv.tasaEur,
+  });
+
+  return {
+    monedaInversion: converted.monedaEntrada,
+    inversionEntrada: converted.precioEntrada,
+    inversionUsd: converted.precioUsd,
+  };
+}
+
 module.exports = {
   VALID_CURRENCIES,
   convertPriceEntry,
   resolvePriceFromRequest,
+  resolveInversionFromRequest,
 };

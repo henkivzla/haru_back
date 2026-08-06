@@ -1,6 +1,7 @@
 const db = require('../../config/db');
 const { normalizeCodigoRef } = require('../utils/productCode');
 const { insertProduct, resolveProductPriceUpdate } = require('../services/productService');
+const { resolveInversionFromRequest } = require('../services/priceConversionService');
 const { saveProductImage, deleteStoredImage, cleanupTempFile } = require('../services/productImageService');
 const { resolveMediaUrl } = require('../../config/uploads');
 
@@ -27,6 +28,9 @@ const PRODUCT_SELECT = `
   p.precio_bs_snapshot AS precioBsSnapshot,
   p.precio_eur_snapshot AS precioEurSnapshot,
   p.precio_registrado_at AS precioRegistradoAt,
+  p.moneda_inversion AS monedaInversion,
+  p.inversion_entrada AS inversionEntrada,
+  p.inversion_usd AS inversionUsd,
   p.stock,
   p.stock_minimo AS minStock,
   p.descripcion,
@@ -275,7 +279,7 @@ class AdminController {
   static async createProduct(req, res, next) {
     try {
       const tiendaId = req.user?.tiendaId || 1;
-      const { codigo, nombre, categoria, precioUsd, monedaEntrada, precioEntrada, stock, minStock } = req.body;
+      const { codigo, nombre, categoria, precioUsd, monedaEntrada, precioEntrada, monedaInversion, inversionEntrada, stock, minStock } = req.body;
 
       const result = await insertProduct({
         tiendaId,
@@ -286,6 +290,8 @@ class AdminController {
         precioUsd,
         monedaEntrada,
         precioEntrada,
+        monedaInversion,
+        inversionEntrada,
         stock,
         minStock,
       });
@@ -338,6 +344,8 @@ class AdminController {
             precioUsd: row.precioUsd,
             monedaEntrada: row.monedaEntrada || 'USD',
             precioEntrada: row.precioEntrada ?? row.precioUsd,
+            monedaInversion: row.monedaInversion,
+            inversionEntrada: row.inversionEntrada,
             stock: row.stock,
             minStock: row.minStock,
             codigoSuffixFallback: `${Date.now()}${i}`,
@@ -376,7 +384,7 @@ class AdminController {
     try {
       const tiendaId = req.user?.tiendaId || 1;
       const id = parseInt(req.params.id, 10);
-      const { nombre, codigo, categoria, precioUsd, monedaEntrada, precioEntrada, stock, minStock } = req.body;
+      const { nombre, codigo, categoria, precioUsd, monedaEntrada, precioEntrada, monedaInversion, inversionEntrada, stock, minStock } = req.body;
 
       if (!id) {
         return res.status(400).json({ success: false, error: 'ID inválido' });
@@ -421,6 +429,7 @@ class AdminController {
       }
 
       const price = await resolveProductPriceUpdate({ precioUsd, monedaEntrada, precioEntrada });
+      const inversion = await resolveInversionFromRequest({ monedaInversion, inversionEntrada });
 
       await db.query(
         `UPDATE productos
@@ -428,6 +437,7 @@ class AdminController {
              precio_usd = ?, moneda_entrada = ?, precio_entrada = ?,
              tasa_bcv_snapshot = ?, tasa_eur_snapshot = ?,
              precio_bs_snapshot = ?, precio_eur_snapshot = ?, precio_registrado_at = NOW(),
+             moneda_inversion = ?, inversion_entrada = ?, inversion_usd = ?,
              stock = ?, stock_minimo = ?
          WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
         [
@@ -441,6 +451,9 @@ class AdminController {
           price.tasaEurSnapshot,
           price.precioBsSnapshot,
           price.precioEurSnapshot,
+          inversion?.monedaInversion || null,
+          inversion?.inversionEntrada ?? null,
+          inversion?.inversionUsd ?? null,
           stock ?? 0,
           minStock ?? 5,
           id,
