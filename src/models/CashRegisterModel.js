@@ -109,6 +109,27 @@ class CashRegisterModel {
     return result.insertId;
   }
 
+  static async ensureOpenForDirectMode({ tiendaId, usuarioId, tasaBcv = 746.63, tasaEur = null }) {
+    const active = await CashRegisterModel.findActiveByUser(usuarioId);
+    if (active) return active.id;
+
+    return CashRegisterModel.open({
+      tiendaId,
+      usuarioId,
+      montoUsd: 0,
+      montoBs: 0,
+      montoEur: 0,
+      desgloseUsd: {},
+      desgloseBs: {},
+      desgloseEur: {},
+      zelle: 0,
+      pagoMovil: 0,
+      pos: 0,
+      tasaBcv,
+      tasaEur,
+    });
+  }
+
   static async getVentasSummary(cajaId) {
     const [rows] = await db.execute(
       `SELECT

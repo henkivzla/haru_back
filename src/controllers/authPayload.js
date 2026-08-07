@@ -25,6 +25,7 @@ function buildAuthPayload(user, subscription, extras = {}) {
   const appearance = resolveAppearance(user);
   const canCustomizeAppearance = isSuperAdmin || role === 'ADMIN';
   const pendingPayment = extras.pendingPayment ?? null;
+  const modoVentas = isSuperAdmin ? 'turno' : (user.tienda_modo_ventas === 'directo' ? 'directo' : 'turno');
 
   const subscriptionReminder = !isSuperAdmin && subscription
     ? computeSubscriptionReminder({
@@ -43,7 +44,8 @@ function buildAuthPayload(user, subscription, extras = {}) {
       role,
       planSlug,
       features,
-      subscriptionActive
+      subscriptionActive,
+      modoVentas,
     },
     userResponse: {
       id: user.id,
@@ -69,6 +71,7 @@ function buildAuthPayload(user, subscription, extras = {}) {
       ultimoLogin: user.ultimo_login || null,
       createdAt: user.created_at || null,
       accountEstado: user.estado || 'ACTIVO',
+      modoVentas,
     }
   };
 }

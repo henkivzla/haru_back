@@ -53,3 +53,8 @@ ALTER TABLE reportes_pago
 
 -- 009: apellido en clientes
 ALTER TABLE clientes ADD COLUMN apellido VARCHAR(150) NULL AFTER nombre;
+
+-- 023: modo ventas por tienda (turno | directo)
+ALTER TABLE tiendas
+  ADD COLUMN modo_ventas ENUM('turno', 'directo') NOT NULL DEFAULT 'turno'
+  AFTER accent_key;

@@ -1,4 +1,5 @@
 const CashRegisterModel = require('../models/CashRegisterModel');
+const { getModoVentas } = require('../services/tiendaSettingsService');
 
 function round2(value) {
   return Math.round(Number(value) * 100) / 100;
@@ -14,11 +15,29 @@ function computeEurFromUsd(usd, tasaBcv, tasaEur) {
 class CashRegisterController {
   async getStatus(req, res, next) {
     try {
-      const activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
+      const tiendaId = req.user?.tiendaId;
+      let activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
+
+      if (!activeCaja && tiendaId) {
+        const modoVentas = await getModoVentas(tiendaId);
+        if (modoVentas === 'directo') {
+          await CashRegisterModel.ensureOpenForDirectMode({
+            tiendaId,
+            usuarioId: req.user.id,
+            tasaBcv: Number(req.query.tasaBcv) || 746.63,
+            tasaEur: req.query.tasaEur ? Number(req.query.tasaEur) : null,
+          });
+          activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
+        }
+      }
+
+      const modoVentas = tiendaId ? await getModoVentas(tiendaId) : 'turno';
+
       return res.json({
         success: true,
         isOpen: !!activeCaja,
         caja: activeCaja,
+        modoVentas,
       });
     } catch (error) {
       next(error);

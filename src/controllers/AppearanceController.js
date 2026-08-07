@@ -1,14 +1,9 @@
 const db = require('../../config/db');
 const UserModel = require('../models/UserModel');
-const {
-  isValidAccentKey,
-  isValidThemeMode,
-  normalizeAccentKey,
-  normalizeThemeMode,
-  resolveAppearance,
-} = require('../constants/accentPalette');
+const { isValidAccentKey, isValidThemeMode, normalizeAccentKey, normalizeThemeMode, resolveAppearance } = require('../constants/accentPalette');
 const { issueAuthToken } = require('./authPayload');
 const { refreshSubscriptionForStore } = require('../services/subscriptionLifecycleService');
+const { isValidModoVentas } = require('../services/tiendaSettingsService');
 
 class AppearanceController {
   async updateStoreAppearance(req, res, next) {
@@ -26,12 +21,15 @@ class AppearanceController {
         return res.status(400).json({ success: false, error: 'No hay comercio asociado a tu cuenta' });
       }
 
-      const { themeMode, accentKey } = req.body || {};
+      const { themeMode, accentKey, modoVentas } = req.body || {};
       if (themeMode !== undefined && !isValidThemeMode(themeMode)) {
         return res.status(400).json({ success: false, error: 'Modo de tema inválido' });
       }
       if (accentKey !== undefined && !isValidAccentKey(accentKey)) {
         return res.status(400).json({ success: false, error: 'Color de acento inválido' });
+      }
+      if (modoVentas !== undefined && !isValidModoVentas(modoVentas)) {
+        return res.status(400).json({ success: false, error: 'Modo de ventas inválido' });
       }
 
       const nextThemeMode = themeMode !== undefined
@@ -52,6 +50,10 @@ class AppearanceController {
         fields.push('accent_key = ?');
         params.push(nextAccentKey);
       }
+      if (modoVentas !== undefined) {
+        fields.push('modo_ventas = ?');
+        params.push(modoVentas);
+      }
 
       if (!fields.length) {
         return res.status(400).json({ success: false, error: 'No hay cambios para guardar' });
@@ -69,13 +71,14 @@ class AppearanceController {
       }
 
       const subscription = await refreshSubscriptionForStore(db, tiendaId);
-      const { user: userResponse } = issueAuthToken(user, subscription);
+      const { token, user: userResponse } = issueAuthToken(user, subscription);
 
       return res.json({
         success: true,
-        message: 'Apariencia del comercio actualizada. Tu equipo la verá al iniciar sesión.',
+        message: 'Configuración del comercio actualizada. Tu equipo la verá al iniciar sesión.',
         appearance: userResponse.appearance,
         user: userResponse,
+        token,
       });
     } catch (error) {
       next(error);
