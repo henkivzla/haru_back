@@ -1,6 +1,7 @@
 const SaleModel = require('../models/SaleModel');
 const CashRegisterModel = require('../models/CashRegisterModel');
 const CasheaCalculatorService = require('../services/CasheaCalculatorService');
+const { getModoVentas } = require('../services/tiendaSettingsService');
 
 class SaleController {
   async processSale(req, res, next) {
@@ -13,7 +14,18 @@ class SaleController {
       }
 
       const activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
-      const cajaId = req.body.cajaId || activeCaja?.id || null;
+      let cajaId = req.body.cajaId || activeCaja?.id || null;
+
+      if (!cajaId) {
+        const modoVentas = await getModoVentas(tiendaId);
+        if (modoVentas === 'directo') {
+          cajaId = await CashRegisterModel.ensureOpenForDirectMode({
+            tiendaId,
+            usuarioId: req.user.id,
+            tasaBcv: Number(tasaBcv) || 746.63,
+          });
+        }
+      }
 
       if (!cajaId) {
         return res.status(400).json({

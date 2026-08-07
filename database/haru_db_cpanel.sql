@@ -1,20 +1,17 @@
--- ============================================================================
--- HARU VENEZUELA — SCHEMA NORMALIZADO v2.7
--- Autor: @henkivzla
--- SUPERADMIN seed (pass haru2026):
---   Eiborth Gómez · gomezeiborth@gmail.com · 4129852460
+﻿-- ============================================================================
+-- HARU VENEZUELA — Import cPanel / phpMyAdmin (SIN DROP DATABASE)
+-- v2.7 — incluye modo_ventas (turno | directo)
+--
+-- USO:
+--   1. Crea la BD en cPanel (ej. henkicom_haru_dev_db o henkicom_haru_pro)
+--   2. En phpMyAdmin, selecciona esa BD en el panel izquierdo
+--   3. Importar -> este archivo
+--
+-- SUPERADMIN seed (contrasena inicial: haru2026):
+--   Eiborth Gomez · gomezeiborth@gmail.com · 4129852460
 --   Carla Borges · carlaborgesce@gmail.com · 4128066714
 --   Haru Henki · haru@henki.com.ve · 04228180393
--- Incluye: clientes.apellido, Binance, gastos, sucursales, soft delete, productos.creado_por_id, apariencia tienda/usuario
--- Usa SOLO este archivo para crear o resetear la BD (no migraciones sueltas).
--- IMPORTANTE: Este script BORRA la base de datos existente y la recrea desde cero.
--- Importar en phpMyAdmin: pestaña Importar → database/schema.sql
--- ⚠️  Borra todo y deja solo catálogo + 3 super administradores iniciales.
 -- ============================================================================
-
-DROP DATABASE IF EXISTS haru_db;
-CREATE DATABASE haru_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE haru_db;
 
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO';
@@ -116,7 +113,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   INDEX idx_token_hash (token_hash),
   INDEX idx_usuario_expires (usuario_id, expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Tokens temporales para restablecer contraseña';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Tokens temporales para restablecer contraseÃ±a';
 
 -- ============================================================================
 -- 5. SUSCRIPCIONES
@@ -431,12 +428,12 @@ CREATE TABLE IF NOT EXISTS sucursales (
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================================
--- SEED DATA — catálogo del sistema + super administradores
--- Contraseña inicial de todos: haru2026
+-- SEED DATA â€” catÃ¡logo del sistema + super administradores
+-- ContraseÃ±a inicial de todos: haru2026
 -- ============================================================================
 
 INSERT IGNORE INTO usuarios (id, tienda_id, rol_id, nombre, email, telefono, password_hash, estado) VALUES
-  (1, NULL, 1, 'Eiborth Gómez', 'gomezeiborth@gmail.com', '4129852460', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
+  (1, NULL, 1, 'Eiborth GÃ³mez', 'gomezeiborth@gmail.com', '4129852460', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
   (2, NULL, 1, 'Carla Borges', 'carlaborgesce@gmail.com', '4128066714', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO'),
   (3, NULL, 1, 'Haru Henki', 'haru@henki.com.ve', '04228180393', '$2b$10$p5bxr.sDU5uklQQ8BGYXzultTmL4sCHZfzv3Q2OKUJtqRV674D1uC', 'ACTIVO');
 
