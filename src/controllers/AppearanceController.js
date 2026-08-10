@@ -3,7 +3,7 @@ const UserModel = require('../models/UserModel');
 const { isValidAccentKey, isValidThemeMode, normalizeAccentKey, normalizeThemeMode, resolveAppearance } = require('../constants/accentPalette');
 const { issueAuthToken } = require('./authPayload');
 const { refreshSubscriptionForStore } = require('../services/subscriptionLifecycleService');
-const { isValidModoVentas } = require('../services/tiendaSettingsService');
+const { isValidModoVentas, hasTiendaRif } = require('../services/tiendaSettingsService');
 
 class AppearanceController {
   async updateStoreAppearance(req, res, next) {
@@ -32,6 +32,24 @@ class AppearanceController {
         return res.status(400).json({ success: false, error: 'Modo de ventas inválido' });
       }
 
+      const [tiendaRows] = await db.execute(
+        'SELECT rif FROM tiendas WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+        [tiendaId]
+      );
+      const tiendaHasRif = hasTiendaRif(tiendaRows[0] || {});
+
+      if (modoVentas === 'turno' && !tiendaHasRif) {
+        return res.status(400).json({
+          success: false,
+          error: 'Para usar turno de caja debes registrar el RIF de tu comercio.',
+        });
+      }
+
+      let nextModoVentas = modoVentas;
+      if (!tiendaHasRif) {
+        nextModoVentas = 'directo';
+      }
+
       const nextThemeMode = themeMode !== undefined
         ? normalizeThemeMode(themeMode)
         : undefined;
@@ -50,9 +68,9 @@ class AppearanceController {
         fields.push('accent_key = ?');
         params.push(nextAccentKey);
       }
-      if (modoVentas !== undefined) {
+      if (nextModoVentas !== undefined) {
         fields.push('modo_ventas = ?');
-        params.push(modoVentas);
+        params.push(nextModoVentas);
       }
 
       if (!fields.length) {

@@ -16,6 +16,7 @@ const USER_SELECT = `
   t.theme_mode AS tienda_theme_mode,
   t.accent_key AS tienda_accent_key,
   t.modo_ventas AS tienda_modo_ventas,
+  t.rif AS tienda_rif,
   u.theme_mode AS user_theme_mode,
   u.accent_key AS user_accent_key
 `;

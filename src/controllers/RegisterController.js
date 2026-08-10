@@ -54,10 +54,11 @@ class RegisterController {
       await conn.beginTransaction();
 
       const direccion = rubro ? `Rubro: ${rubro}` : null;
+      const modoVentas = normalizedRif ? 'turno' : 'directo';
       const [tiendaResult] = await conn.execute(
-        `INSERT INTO tiendas (nombre, rif, direccion, telefono, activo)
-         VALUES (?, ?, ?, ?, 1)`,
-        [nombreComercio.trim(), normalizedRif, direccion, telefono?.trim() || null]
+        `INSERT INTO tiendas (nombre, rif, direccion, telefono, activo, modo_ventas)
+         VALUES (?, ?, ?, ?, 1, ?)`,
+        [nombreComercio.trim(), normalizedRif, direccion, telefono?.trim() || null, modoVentas]
       );
       const tiendaId = tiendaResult.insertId;
 

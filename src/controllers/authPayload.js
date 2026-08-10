@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
 const { resolveFeatures } = require('../config/planFeatures');
 const { resolveAppearance } = require('../constants/accentPalette');
+const { resolveModoVentas } = require('../services/tiendaSettingsService');
 const { computeSubscriptionReminder } = require('../services/subscriptionReminderService');
 
 function buildAuthPayload(user, subscription, extras = {}) {
@@ -25,7 +26,8 @@ function buildAuthPayload(user, subscription, extras = {}) {
   const appearance = resolveAppearance(user);
   const canCustomizeAppearance = isSuperAdmin || role === 'ADMIN';
   const pendingPayment = extras.pendingPayment ?? null;
-  const modoVentas = isSuperAdmin ? 'turno' : (user.tienda_modo_ventas === 'directo' ? 'directo' : 'turno');
+  const modoVentas = resolveModoVentas(user);
+  const storeRif = String(user.tienda_rif || '').trim() || null;
 
   const subscriptionReminder = !isSuperAdmin && subscription
     ? computeSubscriptionReminder({
@@ -53,6 +55,7 @@ function buildAuthPayload(user, subscription, extras = {}) {
       email: user.email,
       role,
       tiendaNombre: user.tienda_nombre,
+      storeRif,
       planSlug,
       planNombre: subscription?.planNombre || (isSuperAdmin ? 'Plan Pro' : 'Plan Económico'),
       planMonto: subscription?.planMonto || (planSlug === 'pro' ? 22 : planSlug === 'estandar' ? 18 : 15),

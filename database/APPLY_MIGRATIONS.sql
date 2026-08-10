@@ -58,3 +58,9 @@ ALTER TABLE clientes ADD COLUMN apellido VARCHAR(150) NULL AFTER nombre;
 ALTER TABLE tiendas
   ADD COLUMN modo_ventas ENUM('turno', 'directo') NOT NULL DEFAULT 'turno'
   AFTER accent_key;
+
+-- Emprendedores sin RIF: ventas directas (sin abrir/cerrar caja)
+UPDATE tiendas
+SET modo_ventas = 'directo'
+WHERE (rif IS NULL OR TRIM(rif) = '')
+  AND modo_ventas = 'turno';

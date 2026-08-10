@@ -27,3 +27,6 @@ uploads/*
 .idea/
 .vscode/
 *.sw?
+
+# SQL — aplicar manualmente en MySQL/phpMyAdmin (no commitear)
+*.sql

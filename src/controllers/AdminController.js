@@ -1,4 +1,5 @@
 const db = require('../../config/db');
+const { getVentasResumen, getItemsVendidos } = require('../services/dashboardSalesService');
 const { normalizeCodigoRef } = require('../utils/productCode');
 const { insertProduct, resolveProductPriceUpdate } = require('../services/productService');
 const { assertCanAddProducts, getProductLimitInfo } = require('../services/planLimitService');
@@ -626,7 +627,10 @@ class AdminController {
           COUNT(*) AS totalVentas
          FROM ventas v
          JOIN cajas c ON c.id = v.caja_id
-         WHERE c.tienda_id = ? AND MONTH(v.created_at) = MONTH(NOW()) AND YEAR(v.created_at) = YEAR(NOW())`,
+         WHERE c.tienda_id = ?
+           AND v.anulada = 0
+           AND MONTH(v.created_at) = MONTH(NOW())
+           AND YEAR(v.created_at) = YEAR(NOW())`,
         [tiendaId]
       );
 
@@ -654,11 +658,16 @@ class AdminController {
         totalPendienteUsd = parseFloat(cuentas?.totalPendiente || 0);
       }
 
+      const ventasResumen = await getVentasResumen(tiendaId);
+      const itemsVendidos = await getItemsVendidos(tiendaId);
+
       res.json({
         success: true,
         data: {
           facturacionUsd: parseFloat(ventas?.totalUsd || 0),
           totalVentas: ventas?.totalVentas || 0,
+          ventasResumen,
+          itemsVendidos,
           lowStock: inventario?.lowStock || 0,
           emptyStock: inventario?.emptyStock || 0,
           totalPendienteUsd
