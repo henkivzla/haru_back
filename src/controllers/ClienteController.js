@@ -46,6 +46,47 @@ class ClienteController {
     }
   }
 
+  static async update(req, res, next) {
+    try {
+      const tiendaId = req.user?.tiendaId;
+      const id = parseInt(req.params.id, 10);
+      const { nombre, apellido, rifCedula, telefono, email, direccion } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ success: false, error: 'Cliente no válido' });
+      }
+
+      const nombreFinal = nombre?.trim() || apellido?.trim();
+      if (!nombreFinal) {
+        return res.status(400).json({ success: false, error: 'Indica al menos nombre o apellido' });
+      }
+
+      const [result] = await db.query(
+        `UPDATE clientes
+         SET nombre = ?, apellido = ?, rif_cedula = ?, telefono = ?, email = ?, direccion = ?
+         WHERE id = ? AND tienda_id = ? AND deleted_at IS NULL`,
+        [
+          nombreFinal,
+          apellido?.trim() || null,
+          rifCedula?.trim() || null,
+          telefono?.trim() || null,
+          email?.trim() || null,
+          direccion?.trim() || null,
+          id,
+          tiendaId,
+        ]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, error: 'Cliente no encontrado' });
+      }
+
+      res.json({ success: true, message: 'Cliente actualizado' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async remove(req, res, next) {
     try {
       const tiendaId = req.user?.tiendaId;

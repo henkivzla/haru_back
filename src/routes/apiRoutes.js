@@ -62,6 +62,7 @@ router.put('/cuentas/:id/pagar', verifyToken, checkSubscriptionActive, adminOnly
 // CLIENTES (Plan Estándar+)
 router.get('/clientes', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('clientes'), (req, res, next) => ClienteController.list(req, res, next));
 router.post('/clientes', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('clientes'), (req, res, next) => ClienteController.create(req, res, next));
+router.patch('/clientes/:id', verifyToken, checkSubscriptionActive, adminOnly, checkFeature('clientes'), (req, res, next) => ClienteController.update(req, res, next));
 router.delete('/clientes/:id', verifyToken, checkSubscriptionActive, adminOnly, requireAdminReauth, checkFeature('clientes'), (req, res, next) => ClienteController.remove(req, res, next));
 
 // GASTOS ADMINISTRATIVOS (Plan Estándar+)
