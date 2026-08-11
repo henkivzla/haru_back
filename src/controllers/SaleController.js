@@ -3,6 +3,11 @@ const CashRegisterModel = require('../models/CashRegisterModel');
 const CasheaCalculatorService = require('../services/CasheaCalculatorService');
 const { getModoVentas } = require('../services/tiendaSettingsService');
 
+function parseDateQuery(value) {
+  const raw = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+}
+
 class SaleController {
   async processSale(req, res, next) {
     try {
@@ -75,10 +80,22 @@ class SaleController {
 
       const activeCaja = await CashRegisterModel.findActiveByUser(req.user.id);
       const soloAnuladas = String(req.query.estado || 'activas').toLowerCase() === 'anuladas';
+      const fecha = parseDateQuery(req.query.fecha);
+      const desde = parseDateQuery(req.query.desde);
+      const hasta = parseDateQuery(req.query.hasta);
+      const rangeDesde = fecha || desde;
+      const rangeHasta = fecha || hasta || desde;
       let ventas = [];
       let scope = 'hoy';
 
-      if (activeCaja?.id) {
+      if (rangeDesde && rangeHasta) {
+        ventas = await SaleModel.listByTiendaDateRange(tiendaId, {
+          desde: rangeDesde,
+          hasta: rangeHasta,
+          anulada: soloAnuladas ? 1 : 0,
+        });
+        scope = rangeDesde === rangeHasta ? 'fecha' : 'rango';
+      } else if (activeCaja?.id) {
         ventas = await SaleModel.listByCaja(activeCaja.id, tiendaId, { anulada: soloAnuladas ? 1 : 0 });
         scope = 'turno';
       } else {
@@ -97,6 +114,8 @@ class SaleController {
         cajaAbierta: Boolean(activeCaja?.id),
         scope,
         estado: soloAnuladas ? 'anuladas' : 'activas',
+        fechaDesde: rangeDesde || null,
+        fechaHasta: rangeHasta || null,
       });
     } catch (error) {
       next(error);
