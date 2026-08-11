@@ -162,6 +162,52 @@ class SaleModel {
     return rows.map((row) => this.mapVentaRow(row));
   }
 
+  static async listByTiendaDateRange(
+    tiendaId,
+    { desde, hasta, limit = 200, anulada = 0 } = {}
+  ) {
+    const safeLimit = Math.min(Math.max(Number(limit) || 200, 1), 500);
+    const anuladaFlag = anulada ? 1 : 0;
+    const orderColumn = anulada ? 'v.anulada_at' : 'v.created_at';
+    const dateColumn = anulada ? 'COALESCE(v.anulada_at, v.created_at)' : 'v.created_at';
+    const rangeDesde = desde || hasta;
+    const rangeHasta = hasta || desde;
+    if (!rangeDesde || !rangeHasta) return [];
+
+    const [rows] = await db.execute(
+      `SELECT
+         v.id,
+         v.metodo_pago AS metodoPago,
+         v.monto_total_usd AS montoUsd,
+         v.monto_total_bs AS montoBs,
+         v.created_at AS createdAt,
+         v.anulada_at AS anuladaAt,
+         TRIM(CONCAT(COALESCE(c.nombre, ''), ' ', COALESCE(c.apellido, ''))) AS clienteNombre,
+         COUNT(iv.id) AS itemsCount,
+         COALESCE(SUM(iv.cantidad), 0) AS cantidadTotal,
+         GROUP_CONCAT(iv.nombre_producto ORDER BY iv.id SEPARATOR ' · ') AS productosResumen,
+         GROUP_CONCAT(
+           IF(
+             iv.cantidad = FLOOR(iv.cantidad),
+             CAST(iv.cantidad AS UNSIGNED),
+             TRIM(TRAILING '0' FROM TRIM(TRAILING '.' FROM CAST(iv.cantidad AS CHAR)))
+           )
+           ORDER BY iv.id SEPARATOR ' · '
+         ) AS cantidadesResumen
+       FROM ventas v
+       JOIN cajas ca ON ca.id = v.caja_id
+       LEFT JOIN clientes c ON c.id = v.cliente_id
+       LEFT JOIN items_venta iv ON iv.venta_id = v.id
+       WHERE ca.tienda_id = ? AND v.anulada = ?
+         AND DATE(${dateColumn}) >= ? AND DATE(${dateColumn}) <= ?
+       GROUP BY v.id
+       ORDER BY ${orderColumn} DESC
+       LIMIT ${safeLimit}`,
+      [tiendaId, anuladaFlag, rangeDesde, rangeHasta]
+    );
+    return rows.map((row) => this.mapVentaRow(row));
+  }
+
   static async annulVenta({ ventaId, tiendaId, usuarioId, cajaId }) {
     const connection = await db.getConnection();
     try {
