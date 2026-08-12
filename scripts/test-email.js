@@ -42,10 +42,10 @@ async function main() {
         storeName: 'Comercio Demo Haru',
         userName: 'Usuario de prueba',
         userEmail: 'cliente@ejemplo.com',
-        planLabel: 'Plan Pro ($22)',
+        planLabel: 'Plan Pro ($7)',
         metodoPago: 'Pago Móvil (Bs)',
         referencia: 'REF-TEST-123456',
-        montoUsd: 22,
+        montoUsd: 7,
         bancoEmisor: 'Banesco',
       });
       console.log('✅ Aviso de reporte de pago enviado a', mailConfig.PAYMENT_NOTIFY_EMAIL);

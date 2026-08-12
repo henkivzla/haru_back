@@ -28,5 +28,6 @@ uploads/*
 .vscode/
 *.sw?
 
-# SQL — aplicar manualmente en MySQL/phpMyAdmin (no commitear)
+# SQL — aplicar manualmente en MySQL/phpMyAdmin (no versionar)
 *.sql
+**/*.sql

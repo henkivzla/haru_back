@@ -134,9 +134,9 @@ Definidos en la tabla `planes`:
 
 | Plan | Precio | Usuarios | Productos |
 |------|--------|----------|-----------|
-| Económico | $15/mes | 1 | 75 |
-| Estándar | $18/mes | 3 | 300 |
-| Pro | $22/mes | 999 (ilimitado*) | Ilimitado |
+| Económico | $3/mes | 1 | 75 |
+| Estándar | $5/mes | 3 | 300 |
+| Pro | $7/mes | 999 (ilimitado*) | Ilimitado |
 
 \* El plan Pro usa `999` usuarios en BD; productos Pro usan `max_productos = NULL` (sin tope).
 

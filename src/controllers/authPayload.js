@@ -58,7 +58,7 @@ function buildAuthPayload(user, subscription, extras = {}) {
       storeRif,
       planSlug,
       planNombre: subscription?.planNombre || (isSuperAdmin ? 'Plan Pro' : 'Plan Económico'),
-      planMonto: subscription?.planMonto || (planSlug === 'pro' ? 22 : planSlug === 'estandar' ? 18 : 15),
+      planMonto: subscription?.planMonto || (planSlug === 'pro' ? 7 : planSlug === 'estandar' ? 5 : 3),
       subscriptionEstado: subscription?.estado || (isSuperAdmin ? 'ACTIVA' : 'PRUEBA'),
       proximoPago: subscription?.proximoPago || null,
       maxUsuarios: subscription?.maxUsuarios || (planSlug === 'pro' ? 999 : planSlug === 'estandar' ? 3 : 1),

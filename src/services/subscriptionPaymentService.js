@@ -4,13 +4,13 @@ const METODO_MAP = {
 };
 
 const PLAN_BY_LABEL = {
-  'Plan Económico ($15)': 1,
-  'Plan Estándar ($18)': 2,
-  'Plan Pro ($22)': 3,
+  'Plan Económico ($3)': 1,
+  'Plan Estándar ($5)': 2,
+  'Plan Pro ($7)': 3,
 };
 
-const PLAN_BY_AMOUNT = { 15: 1, 18: 2, 22: 3 };
-const VALID_AMOUNTS = new Set([15, 18, 22]);
+const PLAN_BY_AMOUNT = { 3: 1, 5: 2, 7: 3 };
+const VALID_AMOUNTS = new Set([3, 5, 7]);
 const BINANCE_METHOD = 'Binance (USDT)';
 const NO_BANCO_METHODS = new Set([BINANCE_METHOD]);
 
@@ -33,7 +33,7 @@ function validateReportPayload(body) {
     return { ok: false, status: 400, error: 'La referencia del pago es requerida' };
   }
   if (!Number.isFinite(amount) || !VALID_AMOUNTS.has(amount)) {
-    return { ok: false, status: 400, error: 'Monto inválido. Debe ser $15, $18 o $22' };
+    return { ok: false, status: 400, error: 'Monto inválido. Debe ser $3, $5 o $7' };
   }
   if (!METODO_MAP[metodoPago]) {
     return { ok: false, status: 400, error: 'Método de pago no válido' };
